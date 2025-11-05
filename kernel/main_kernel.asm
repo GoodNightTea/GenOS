@@ -1,58 +1,133 @@
-
+; most advanced snake simulator in existence
 [BITS 32]
 [ORG 0x100000]
-
 kernel_entry:
-    ; Setup stack at a safer location
-    mov esp, 0x7C00         ; Use the old bootloader location (no longer needed)
+    mov esp, 0x7C00
     cli
     
-    ; Setup IDT FIRST (before enabling interrupts)
     call setup_idt
-    
-     
-    ; Read back the handler address from IDT entry 33
-    mov esi, 0x110000
-    add esi, (33 * 8)
-    mov ax, [esi]           ; Low 16 bits
-    mov dx, [esi + 6]       ; High 16 bits
-    ; If this matches keyboard_handler address, we're good
-    
-    ; Initialize PICs
     call init_pics
-    
-    ; NOW safe to enable interrupts
     sti
     
-    ; Test 1: Clear and print
+    ; Clear screen
     mov eax, 0x00
     call vga_clear_screen
     
-    mov eax, 20
-    mov ebx, 5
-    mov ecx, test1_msg
-    mov edx, 0x0E
-    call vga_print_string_at
+    ; INITIALIZE SNAKE PROPERLY
+    mov dword [snake_x + 0], 17
+    mov dword [snake_x + 4], 18
+    mov dword [snake_x + 8], 19
+    mov dword [snake_x + 12], 20
     
-    mov eax, 15
-    mov ebx, 8
-    mov ecx, rect_msg
-    mov edx, 0x0F
-    call vga_print_string_at
-.game:
+    mov dword [snake_y + 0], 12
+    mov dword [snake_y + 4], 12
+    mov dword [snake_y + 8], 12
+    mov dword [snake_y + 12], 12
+    
+    mov dword [snake_head], 3
+    mov dword [snake_tail], 0
+    
+    ; Draw initial snake
+    mov ecx, 0
+.draw_initial:
+    cmp ecx, 4
+    jge .game
+    
+    push ecx
+    shl ecx, 2
+    mov eax, [snake_x + ecx]
+    mov ebx, [snake_y + ecx]
     pushad
+    mov ecx, '#'
+    mov edx, 0x2A
+    call vga_write_char_at
+    popad
+    pop ecx
+    inc ecx
+    jmp .draw_initial
+
+.game:
+    ; Calculate new head position
+    mov eax, [snake_head]
+    mov ebx, eax
+    shl ebx, 2                      ; × 4 for dword indexing
     
-    ; Draw snake segments
-    mov eax, edi
-    mov ebx, 10
-    mov ecx, 3
-    mov edx, 1
-    mov esi, ' '
-    call vga_fill_rect
+    ; Get current head position
+    mov ecx, [snake_x + ebx]
+    mov edx, [snake_y + ebx]
     
-    add edi, 0x01
+    ; Move based on direction (example: move right)
+    inc ecx                         ; new_x = old_x + 1
+    
+    ; wrap around edges
+    cmp ecx, 80
+    jl .no_wrap_x
+    mov ecx, 0
+.no_wrap_x:
+	cmp edx, 25
+	jl .no_wrap_y
+	mov edx, 0
+.no_wrap_y:
+    
+    ; Advance head index (circular)
+    inc dword [snake_head]
+    mov eax, [snake_head]
+    cmp eax, max_length
+    jl .no_wrap_head
+    mov dword [snake_head], 0       ; Wrap around
+.no_wrap_head:
+    
+    ; Store new head position
+    mov eax, [snake_head]
+    shl eax, 2
+    mov [snake_x + eax], ecx
+    mov [snake_y + eax], edx
+    
+    ; Erase tail
+    mov eax, [snake_tail]
+    shl eax, 2
+    mov ebx, [snake_x + eax]
+    mov ecx, [snake_y + eax]
+    pushad
+    mov eax, ebx
+    mov ebx, ecx
+    mov ecx, ' '
+    mov edx, 0x00
+    call vga_write_char_at
+    popad
+    
+    ; Advance tail index (circular)
+    inc dword [snake_tail]
+    mov eax, [snake_tail]
+    cmp eax, max_length
+    
+    jl .no_wrap_tail
+    mov dword [snake_tail], 0
+.no_wrap_tail:
+    
+    ; Draw new head
+    mov eax, [snake_head]
+    shl eax, 2
+    mov ebx, [snake_x + eax]
+    mov ecx, [snake_y + eax]
+    pushad
+    mov eax, ebx
+    mov ebx, ecx
+    mov ecx, '#'
+    mov edx, 0x2A
+    call vga_write_char_at
+    popad
     call wait_for_key
-    je .game
+    jmp .game
+    
+    ; Add a delay so you can see the movement
+    mov ecx, 500000
+.delay:
+    dec ecx
+    jnz .delay
+    
+    jmp .game               
+
 ; ============================================================================
 ; Helper Functions
 ; ============================================================================
@@ -78,6 +153,7 @@ wait_for_key:
     ; Key was pressed, we're done
     ; Debounce delay
     mov ecx, 500000
+    
 .delay:
     dec ecx
     jnz .delay
@@ -131,11 +207,6 @@ setup_idt:
 keyboard_handler:
     pushad
     
-    ; VISUAL DEBUG: Write something to screen to prove we got here
-    mov edi, VGA_BUFFER
-    mov eax, 0x4F21        ; '!' in white on red
-    mov [edi], ax
-    
     ; Read scancode (clears keyboard buffer)
     in al, 0x60
     
@@ -148,6 +219,7 @@ keyboard_handler:
     
     popad
     iret
+    
 
 ; ============================================================================
 ; Include VGA Driver
@@ -159,24 +231,22 @@ keyboard_handler:
 ; Data Section
 ; ============================================================================
 
-test1_msg       db 'Test 1: VGA Functions & Snake Simulation', 0
-dt_setup_msg   db 'IDT initialized', 0
-rect_msg        db 'Drawing rectangles (snake segments):', 0
-test2_msg       db 'Test 2: Screen Clearing Works!', 0
-test3_msg       db 'Test 3: Character Positioning Test', 0
-skip_msg        db '(Grid test skipped - press key)', 0
-press_key_msg   db 'Press any key to continue...', 0
-success_msg     db 'All VGA Tests Passed!', 0
-ready_msg       db 'Driver ready for Snake game!', 0
+
+
 
 ; Variables
-key_pressed     db 0
-test_x          dd 0
-test_y          dd 0
+max_length    equ 100
+key_pressed   db 0
+snake_x       times 100 dd 0
+snake_y       times 100 dd 0
+snake_head    dd 3
+snake_tail    dd 0
+snake_len     dd 4
+snake_dir	  dd 0
+
 
 ; IDT structures
 idt_desc:
     dw 2047                         ; Limit (256 entries * 8 bytes - 1)
     dd 0                            ; Base address (filled in by setup_idt)
 
-; Note: IDT is now at fixed location 0x110000, not in kernel binary
