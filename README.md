@@ -1,8 +1,7 @@
-# GenOS - Simple 32-bit Operating System
+# GenOS - Now a snake simulator?
 
 This is a minimalist bootloader and kernel system built as a graduation project. This includes my experience creating bootloaders, protected mode transitions, interrupt handling, and VGA text display.
-
-**Note:** This will not be the next ubuntu, I just want to learn how to build OS from scratch in x86 asm!
+I now just used this project as a base for creating a very small snake game. I just couldnt be asked to create a fully fletched OS cause thats years of work and I gotta deliver something...
 
 ## Features
 
