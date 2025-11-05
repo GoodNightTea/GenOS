@@ -1,213 +1,182 @@
-;bug fix: added proper working PIC/interrupt fix from vga_driver
-;moving timer_interrupt_handler into main as it could fix it not being found, lets pray
-;...I once again was corrupting my IDT again by using mov byte instead of mov word
-;forgot to init the pics and messed up the idt descriptor
+
 [BITS 32]
 [ORG 0x100000]
 
 kernel_entry:
-    ; Set up stack
-    mov esp, 0x200000
+    ; Setup stack at a safer location
+    mov esp, 0x7C00         ; Use the old bootloader location (no longer needed)
     cli
-
-    ; Initialize VGA display AND PIC systems
-    call vga_init
-    call init_pics
-
-    ; Set up IDT
-    mov eax, 0
-    mov ebx, 3
-    mov ecx, idt_setup_msg
-    mov edx, 0x0F
-    call vga_print_string_at
+    
+    ; Setup IDT FIRST (before enabling interrupts)
     call setup_idt
-
-    ; Show IDT success
-    mov eax, 0
-    mov ebx, 4
-    mov ecx, idt_success_msg
-    mov edx, 0x0A
-    call vga_print_string_at
-
-    ; Enable interrupts
-    mov eax, 0
-    mov ebx, 5
-    mov ecx, interrupt_enable_msg
-    mov edx, 0x0F
-    call vga_print_string_at
+    
+     
+    ; Read back the handler address from IDT entry 33
+    mov esi, 0x110000
+    add esi, (33 * 8)
+    mov ax, [esi]           ; Low 16 bits
+    mov dx, [esi + 6]       ; High 16 bits
+    ; If this matches keyboard_handler address, we're good
+    
+    ; Initialize PICs
+    call init_pics
+    
+    ; NOW safe to enable interrupts
     sti
-
-    ; Show system ready
-    mov eax, 0
-    mov ebx, 6
-    mov ecx, system_ready_msg
-    mov edx, 0x0A
+    
+    ; Test 1: Clear and print
+    mov eax, 0x00
+    call vga_clear_screen
+    
+    mov eax, 20
+    mov ebx, 5
+    mov ecx, test1_msg
+    mov edx, 0x0E
     call vga_print_string_at
-
-    ; Demo VGA features
-    call demo_vga_features
-
-    ; Enter main loop
-    mov eax, 0
-    mov ebx, 12
-    mov ecx, entering_loop_msg
+    
+    mov eax, 15
+    mov ebx, 8
+    mov ecx, rect_msg
     mov edx, 0x0F
     call vga_print_string_at
+.game:
+    pushad
+    
+    ; Draw snake segments
+    mov eax, edi
+    mov ebx, 10
+    mov ecx, 3
+    mov edx, 1
+    mov esi, ' '
+    call vga_fill_rect
+    
+    add edi, 0x01
+    call wait_for_key
+    je .game
+; ============================================================================
+; Helper Functions
+; ============================================================================
 
-main_loop:
-    ; Show heartbeat
-    call show_heartbeat
-
-    ; Delay
-    mov ecx, 800
+wait_for_key:
+    pushad
+    
+    ; Disable interrupts while setting up
+    cli
+    mov byte [key_pressed], 0
+    
+    ; Now enable interrupts and immediately halt
+    sti
+    
+.wait:
+    hlt                             ; Wait for interrupt
+    
+    ; Check if key was pressed
+    cli                             ; Disable while checking
+    cmp byte [key_pressed], 0
+    je .enable_and_wait
+    
+    ; Key was pressed, we're done
+    ; Debounce delay
+    mov ecx, 500000
 .delay:
     dec ecx
     jnz .delay
-
-    jmp main_loop
-
-; Demo VGA features using safe functions
-demo_vga_features:
-    pushad
-
-    ; Print colored text demo
-    mov eax, 2
-    mov ebx, 8
-    mov ecx, color_demo_msg
-    mov edx, 0x0F
-    call vga_print_string_at
-
-    ; Show different colors using direct positioning
-    mov eax, 4
-    mov ebx, 9
-    mov ecx, red_text
-    mov edx, 0x0C                       ; red
-    call vga_print_string_at
-
-    mov eax, 4
-    mov ebx, 10
-    mov ecx, green_text
-    mov edx, 0x0A                       ; green
-    call vga_print_string_at
-
-    mov eax, 4
-    mov ebx, 11
-    mov ecx, blue_text
-    mov edx, 0x09                       ; blue
-    call vga_print_string_at
-
+    
     popad
     ret
 
-; Heartbeat display
-show_heartbeat:
-    pushad
+.enable_and_wait:
+    sti                             ; Re-enable and loop
+    jmp .wait
 
-    ; Update counter
-    inc dword [heartbeat_counter]
-
-    ; Display at bottom right
-    mov eax, 65
-    mov ebx, 24
-    mov ecx, heartbeat_msg
-    mov edx, 0x0B                       ; cyan
-    call vga_print_string_at
-
-    popad
-    ret
-
-; IDT setup
 setup_idt:
     pushad
-
+    
+    ; Use a fixed safe location for IDT: 0x110000 (well past kernel)
+    mov edi, 0x110000
+    
     ; Clear IDT
-    mov edi, idt_table
+    push edi
     mov ecx, 512
     xor eax, eax
     rep stosd
-
-    ; Setup timer interrupt (INT 32)
+    pop edi
+    
+    ; Setup keyboard interrupt (IRQ1 = INT 33)
+    ; Calculate absolute address of handler
     mov eax, 0x100000
-    add eax, (timer_handler - kernel_entry)
-    mov edi, idt_table + (32 * 8)
-    mov word [edi], ax
-    mov word [edi + 2], 0x08
-    mov byte [edi + 4], 0
-    mov byte [edi + 5], 0x8E
+    mov ebx, keyboard_handler
+    sub ebx, kernel_entry
+    add eax, ebx                    ; EAX = absolute handler address
+    
+    ; Point to IDT entry 33 (IRQ1)
+    add edi, (33 * 8)
+    
+    mov word [edi], ax              ; Low 16 bits of handler
+    mov word [edi + 2], 0x08        ; Code segment
+    mov byte [edi + 4], 0           ; Reserved
+    mov byte [edi + 5], 0x8E        ; Present, ring 0, interrupt gate
     shr eax, 16
-    mov word [edi + 6], ax
-
-    ; Set up divide by zero handler
-    mov eax, 0x100000
-    add eax, (divide_handler - kernel_entry)
-    mov edi, idt_table
-    mov word [edi], ax
-    mov word [edi + 2], 0x08
-    mov byte [edi + 4], 0
-    mov byte [edi + 5], 0x8E
-    shr eax, 16
-    mov word [edi + 6], ax
-
+    mov word [edi + 6], ax          ; High 16 bits of handler
+    
+    ; Set IDT descriptor to point to fixed location
+    mov dword [idt_desc + 2], 0x110000
+    
     ; Load IDT
     lidt [idt_desc]
-
+    
     popad
     ret
 
-timer_handler:
+keyboard_handler:
     pushad
-    ; Acknowledge interrupt
+    
+    ; VISUAL DEBUG: Write something to screen to prove we got here
+    mov edi, VGA_BUFFER
+    mov eax, 0x4F21        ; '!' in white on red
+    mov [edi], ax
+    
+    ; Read scancode (clears keyboard buffer)
+    in al, 0x60
+    
+    ; Set flag
+    mov byte [key_pressed], 1
+    
+    ; Send EOI
     mov al, 0x20
     out 0x20, al
-    inc dword [timer_ticks]
+    
     popad
     iret
 
-divide_handler:
-    pushad
+; ============================================================================
+; Include VGA Driver
+; ============================================================================
 
-    ; Display error using safe VGA
-    mov eax, 10
-    mov ebx, 15
-    mov ecx, divide_error_msg
-    mov edx, 0x4F                       ; white on red
-    call vga_print_string_at
+%include "vga/min_snake_vga.asm"
 
-    cli
-    hlt
-    jmp $
+; ============================================================================
+; Data Section
+; ============================================================================
 
-; Include safe VGA driver
-%include "vga/vga_driver.asm"
+test1_msg       db 'Test 1: VGA Functions & Snake Simulation', 0
+dt_setup_msg   db 'IDT initialized', 0
+rect_msg        db 'Drawing rectangles (snake segments):', 0
+test2_msg       db 'Test 2: Screen Clearing Works!', 0
+test3_msg       db 'Test 3: Character Positioning Test', 0
+skip_msg        db '(Grid test skipped - press key)', 0
+press_key_msg   db 'Press any key to continue...', 0
+success_msg     db 'All VGA Tests Passed!', 0
+ready_msg       db 'Driver ready for Snake game!', 0
 
-; String constants
-idt_setup_msg        db 'Setting up IDT...', 0
-idt_success_msg      db 'IDT configured successfully!', 0
-interrupt_enable_msg db 'Enabling interrupts...', 0
-system_ready_msg     db 'System ready and operational!', 0
-entering_loop_msg    db 'Entering main kernel loop...', 0
-color_demo_msg       db 'VGA Color demonstration:', 0
-red_text            db 'Red text demonstration', 0
-green_text          db 'Green text demonstration', 0
-blue_text           db 'Blue text demonstration', 0
-heartbeat_msg       db 'System Active', 0
-divide_error_msg    db 'FATAL ERROR: Division by zero!', 0
-
-; Variables - safe in main kernel
-heartbeat_counter   dd 0
-timer_ticks         dd 0
-
-; Cursor state for compatibility with old VGA interface
-vga_cursor_x_main   dd 0
-vga_cursor_y_main   dd 2
-vga_color_main      db 0x0F
+; Variables
+key_pressed     db 0
+test_x          dd 0
+test_y          dd 0
 
 ; IDT structures
 idt_desc:
-    dw 2047
-    dd idt_table
+    dw 2047                         ; Limit (256 entries * 8 bytes - 1)
+    dd 0                            ; Base address (filled in by setup_idt)
 
-idt_table:
-    times 2048 db 0
-
-times 4096-($-$$) db 0
+; Note: IDT is now at fixed location 0x110000, not in kernel binary
