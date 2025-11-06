@@ -121,7 +121,7 @@ vga_print_string_at:
     ret
 
 ; ----------------------------------------------------------------------------
-; vga_fill_rect: Fill rectangle (CRITICAL FOR SNAKE)
+; vga_fill_rect: Fill rectangle 
 ; Input: EAX = x, EBX = y, ECX = width, EDX = height
 ;        ESI = character, EDI = color
 ; ----------------------------------------------------------------------------
@@ -210,8 +210,8 @@ init_pics:
     out 0x21, al
     out 0xA1, al
     
-    ; OCW1: Set interrupt masks (enable keyboard only)
-    mov al, 0xFD                ; 11111101b - enable IRQ1 (keyboard)
+    ; OCW1 et interrupt masks (enable timer and keyboard)
+    mov al, 0xFC                ; 11111100b - enable IRQ0 (timer) and IRQ1 (keyboard)
     out 0x21, al                ; Mask for PIC1
     mov al, 0xFF                ; Mask all on PIC2
     out 0xA1, al
