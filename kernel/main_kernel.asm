@@ -47,6 +47,10 @@ kernel_entry:
     jmp .draw_initial
 
 .game:
+    ; Check if game is still running
+    cmp byte [game_running], 0
+    je .game_over
+    
     ; Calculate new head position
     mov eax, [snake_head]
     mov ebx, eax
@@ -56,19 +60,39 @@ kernel_entry:
     mov ecx, [snake_x + ebx]
     mov edx, [snake_y + ebx]
     
-    ; Move based on direction (example: move right)
-    inc ecx                         ; new_x = old_x + 1
+    ; Get direction delta
+    push ecx
+    push edx
+    call get_direction_delta        ; Returns EAX=delta_x, EBX=delta_y
+    pop edx
+    pop ecx
     
-    ; wrap around edges
+    ; Apply movement
+    add ecx, eax                    ; new_x = old_x + delta_x
+    add edx, ebx                    ; new_y = old_y + delta_y
+    
+    ; Wrap around edges (X axis)
+    cmp ecx, 0
+    jge .check_x_max
+    mov ecx, 79                     ; Wrap to right edge
+    jmp .check_y
+.check_x_max:
     cmp ecx, 80
-    jl .no_wrap_x
-    mov ecx, 0
-.no_wrap_x:
-	cmp edx, 25
-	jl .no_wrap_y
-	mov edx, 0
-.no_wrap_y:
+    jl .check_y
+    mov ecx, 0                      ; Wrap to left edge
     
+.check_y:
+    ; Wrap around edges (Y axis)
+    cmp edx, 0
+    jge .check_y_max
+    mov edx, 24                     ; Wrap to bottom
+    jmp .no_wrap
+.check_y_max:
+    cmp edx, 25
+    jl .no_wrap
+    mov edx, 0                      ; Wrap to top
+    
+.no_wrap:
     ; Advance head index (circular)
     inc dword [snake_head]
     mov eax, [snake_head]
@@ -117,53 +141,30 @@ kernel_entry:
     mov edx, 0x2A
     call vga_write_char_at
     popad
-    call wait_for_key
-    jmp .game
     
     ; Add a delay so you can see the movement
-    mov ecx, 500000
+    mov ecx, 5000000
 .delay:
     dec ecx
     jnz .delay
     
-    jmp .game               
+    jmp .game
+
+.game_over:
+    ; Print game over message
+    mov eax, 30
+    mov ebx, 12
+    mov ecx, game_over_msg
+    mov edx, 0x0C                   ; Bright red
+    call vga_print_string_at
+    
+    ; Halt
+    cli
+    hlt
 
 ; ============================================================================
 ; Helper Functions
 ; ============================================================================
-
-wait_for_key:
-    pushad
-    
-    ; Disable interrupts while setting up
-    cli
-    mov byte [key_pressed], 0
-    
-    ; Now enable interrupts and immediately halt
-    sti
-    
-.wait:
-    hlt                             ; Wait for interrupt
-    
-    ; Check if key was pressed
-    cli                             ; Disable while checking
-    cmp byte [key_pressed], 0
-    je .enable_and_wait
-    
-    ; Key was pressed, we're done
-    ; Debounce delay
-    mov ecx, 500000
-    
-.delay:
-    dec ecx
-    jnz .delay
-    
-    popad
-    ret
-
-.enable_and_wait:
-    sti                             ; Re-enable and loop
-    jmp .wait
 
 setup_idt:
     pushad
@@ -207,13 +208,13 @@ setup_idt:
 keyboard_handler:
     pushad
     
-    ; Read scancode (clears keyboard buffer)
+    ; Read scancode from keyboard controller
     in al, 0x60
     
-    ; Set flag
-    mov byte [key_pressed], 1
+    ; Process the scancode
+    call process_scancode
     
-    ; Send EOI
+    ; Send EOI to PIC
     mov al, 0x20
     out 0x20, al
     
@@ -222,31 +223,27 @@ keyboard_handler:
     
 
 ; ============================================================================
-; Include VGA Driver
+; Include Drivers
 ; ============================================================================
 
 %include "vga/min_snake_vga.asm"
+%include "keyboard/keyboard_driver.asm"
 
 ; ============================================================================
 ; Data Section
 ; ============================================================================
 
-
-
-
 ; Variables
 max_length    equ 100
-key_pressed   db 0
 snake_x       times 100 dd 0
 snake_y       times 100 dd 0
 snake_head    dd 3
 snake_tail    dd 0
 snake_len     dd 4
-snake_dir	  dd 0
 
+game_over_msg db 'GAME OVER - Press any key to exit', 0
 
 ; IDT structures
 idt_desc:
     dw 2047                         ; Limit (256 entries * 8 bytes - 1)
     dd 0                            ; Base address (filled in by setup_idt)
-
