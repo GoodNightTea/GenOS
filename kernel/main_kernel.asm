@@ -6,7 +6,9 @@ kernel_entry:
     cli
     
     call setup_idt
+    call setup_timer_idt        ; ADD: Setup timer interrupt
     call init_pics
+    call init_timer             ; ADD: Initialize PIT
     sti
     
     ; Clear screen
@@ -51,10 +53,15 @@ kernel_entry:
     cmp byte [game_running], 0
     je .game_over
     
+    ; Check if we need to spawn apples (FIX: use dword comparison)
+    cmp dword [apple_count], 2
+    jl .spawn_apple              ; Jump if less than 2
+    
+.continue_game:                    
     ; Calculate new head position
     mov eax, [snake_head]
     mov ebx, eax
-    shl ebx, 2                      ; × 4 for dword indexing
+    shl ebx, 2
     
     ; Get current head position
     mov ecx, [snake_x + ebx]
@@ -142,12 +149,22 @@ kernel_entry:
     call vga_write_char_at
     popad
     
-    ; Add a delay so you can see the movement
-    mov ecx, 5000000
-.delay:
-    dec ecx
-    jnz .delay
+    ; NEW: Use timer-based delay instead of busy-wait
+    movzx eax, byte [current_direction]
+    cmp eax, DIR_UP
+    je .vertical_delay
+    cmp eax, DIR_DOWN
+    je .vertical_delay
     
+    ; Horizontal movement: wait 3 frames (~50ms at 60Hz)
+    mov eax, 3
+    call wait_frames
+    jmp .game
+    
+.vertical_delay:
+    ; Vertical movement: wait 5 frames (~83ms at 60Hz) to compensate for tall pixels
+    mov eax, 5
+    call wait_frames
     jmp .game
 
 .game_over:
@@ -161,10 +178,61 @@ kernel_entry:
     ; Halt
     cli
     hlt
+ 
+.spawn_apple:
+    call xorshift32
+    push eax
+    
+    ; Use lower 16 bits for X
+    movzx eax, ax
+    xor edx, edx
+    mov ebx, 80
+    div ebx
+    mov [food_x + ecx*4], edx       ; Store in array indexed by apple_count
+    
+    ; Use upper 16 bits for Y
+    pop eax
+    shr eax, 16
+    xor edx, edx
+    mov ebx, 25
+    div ebx
+    mov ecx, [apple_count]          ; Get current apple index
+    mov [food_y + ecx*4], edx       ; Store in array
+    
+    ; Draw apple
+    mov eax, [food_x + ecx*4]
+    mov ebx, [food_y + ecx*4]
+    push ecx
+    mov ecx, 'O'
+    mov edx, 0x0C
+    call vga_write_char_at
+    pop ecx
+    
+    inc dword [apple_count]         ; FIX: Use dword increment
+    jmp .continue_game
 
 ; ============================================================================
 ; Helper Functions
 ; ============================================================================
+
+xorshift32:
+    push ebx
+    mov eax, [rng_seed]
+    mov ebx, eax
+    
+    shl eax, 13
+    xor eax, ebx
+    
+    mov ebx, eax
+    shr eax, 17
+    xor eax, ebx
+    
+    mov ebx, eax
+    shl eax, 5
+    xor eax, ebx
+    mov [rng_seed], eax
+    pop ebx
+    ret
 
 setup_idt:
     pushad
@@ -220,7 +288,6 @@ keyboard_handler:
     
     popad
     iret
-    
 
 ; ============================================================================
 ; Include Drivers
@@ -228,6 +295,7 @@ keyboard_handler:
 
 %include "vga/min_snake_vga.asm"
 %include "keyboard/keyboard_driver.asm"
+%include "timer/timer_driver.asm"
 
 ; ============================================================================
 ; Data Section
@@ -237,9 +305,13 @@ keyboard_handler:
 max_length    equ 100
 snake_x       times 100 dd 0
 snake_y       times 100 dd 0
+food_x        times 10 dd 0      ; Array for multiple apples
+food_y        times 10 dd 0      ; Array for multiple apples
 snake_head    dd 3
 snake_tail    dd 0
 snake_len     dd 4
+rng_seed      dd 88172645        ; seed for "random" coord generation
+apple_count   dd 0               ; Changed to dword for consistency
 
 game_over_msg db 'GAME OVER - Press any key to exit', 0
 
