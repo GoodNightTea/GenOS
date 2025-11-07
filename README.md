@@ -29,7 +29,7 @@ After first attempting to build a full-featured OS with filesystem support (whic
 - **Collision detection**: Optimized X-then-Y early-exit checking
 - **Pseudo-random generation**: XorShift32 algorithm for apple spawning
 - **Frame-based timing**: Interrupt-driven game loop with directional speed compensation
-
+```
 ## Architecture 
 
 ┌─────────────────┐
@@ -46,7 +46,7 @@ After first attempting to build a full-featured OS with filesystem support (whic
 │  Kernel         │  Sets up IDT, initializes PIC/PIT,
 │  (Sectors 2-9)  │  runs game loop
 └─────────────────┘
-
+```
 ### Memory Layout
 
 0x00000000  - Real mode IVT
@@ -79,6 +79,7 @@ qemu-system-x86_64 -drive file=build/images/snake-os.img,format=raw,if=floppy
 | **ESC** | Pause Game |
 
 ## Project Structure
+```
 .
 ├── boot/
 │   ├── first/
@@ -95,7 +96,7 @@ qemu-system-x86_64 -drive file=build/images/snake-os.img,format=raw,if=floppy
 │       └── min_snake_vga.asm     # Framebuffer driver
 └── tools/
     └── genfs_v2_builder.py       # Disk image builder
-
+```
 ## Issues
 
 - **Max snake length**: 100 segments before circular buffer wraparound
