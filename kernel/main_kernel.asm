@@ -221,6 +221,59 @@ kernel_entry:
 ; collision check time
 ; idea: basically just store x and y of current head coords and compare to each food x and y 
 ; jump if hit
+; great another collision check, this time for the spawn of an apple
+check_spawn_collision:
+	push ecx
+	push edx
+	push edi
+	push esi
+	
+	mov [temp_spawn_x], eax
+	mov [temp_spawn_y], ebx
+	
+	mov ecx, [snake_head]
+	mov edx, [snake_tail]
+	
+	mov esi, edx				; start at tail
+.check_segment:
+	cmp esi, ecx
+	je .after_head
+	mov edi, esi
+	shl edi, 2
+	mov eax, [snake_x + edi]
+	mov ebx, [snake_y + edi]
+	
+	cmp eax, [temp_spawn_x]
+	jne .next_segment
+	cmp ebx, [temp_spawn_y]
+	je .collision_found
+.next_segment:
+	inc esi
+	cmp esi, max_length
+	jl .check_segment
+	xor esi, esi
+	jmp .check_segment
+.after_head:
+	mov edi, ecx
+	shl edi, 2
+	mov eax, [snake_x + edi]
+	mov ebx, [snake_y + edi]
+	cmp eax, [temp_spawn_x]
+	jne .no_collision
+	cmp ebx, [temp_spawn_y]
+	je .collision_found
+.no_collision:
+	xor eax, eax
+	jmp .done
+.collision_found:
+	mov eax, 1
+.done:
+	pop esi
+	pop edi
+	pop edx
+	pop ecx
+	ret
+
 check_apple_collision:
     mov [temp_head_x], ecx
     mov [temp_head_y], edx
@@ -379,7 +432,8 @@ snake_len     dd 4
 rng_seed      dd 88172645        ; seed for "random" coord generation
 apple_count   dd 0               ; Changed to dword for consistency
 
-
+temp_spawn_x  dd 0 		 ; just realised theres a nasty race: if an apple spawns inside the snake, it gets overwritten in the next frame
+temp_spawn_y  dd 0		 ; ill have to store a potential spawn and check for collisions 
 paused db 'Paused', 0
 
 ; IDT structures
