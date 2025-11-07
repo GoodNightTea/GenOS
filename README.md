@@ -59,14 +59,22 @@ After first attempting to build a full-featured OS with filesystem support (whic
 
 ## Build Instructions
 
-### Prerequisites
-
+### Prerequisites 
+```
 sudo apt install nasm qemu-system-x86
+```
+### Compile
+```
+; you can compile boot and stage 2 but they wont change so it wouldnt matter
+nasm -f bin -I kernel/ kernel/main_kernel.asm -o build/kernel.bin
+; and then you can all format them together to make it bootable
+python3 tools/genfs_v2_builder.py build/boot.bin build/images/genos.img build/stage2.bin build/kernel.bin
 
+```
 ### Use
 **In Qemu:**
 
-qemu-system-x86_64 -drive file=build/images/snake-os.img,format=raw,if=floppy
+qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
 
 ## Controls
 
