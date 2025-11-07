@@ -92,9 +92,13 @@ process_scancode:
     jmp .done
 
 .handle_esc:
+	cmp byte [game_running], 0
+	je .up
     mov byte [game_running], 0
     jmp .done
-
+.up:
+	dec dword [game_running]
+	jmp .done
 .done:
     popad
     ret
