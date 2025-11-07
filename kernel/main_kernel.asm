@@ -6,9 +6,9 @@ kernel_entry:
     cli
     
     call setup_idt
-    call setup_timer_idt        ; ADD: Setup timer interrupt
+    call setup_timer_idt        ; setup timer interrupt
     call init_pics
-    call init_timer             ; ADD: Initialize PIT
+    call init_timer             ; init PIT
     sti
     
     ; Clear screen
@@ -51,13 +51,14 @@ kernel_entry:
 .game:
     ; Check if game is still running
     cmp byte [game_running], 0
-    je .game_over
+    je .paused
     
-    ; Check if we need to spawn apples (FIX: use dword comparison)
-    cmp dword [apple_count], 2
-    jl .spawn_apple              ; Jump if less than 2
+    ; Check if we need to spawn apples, use dword bru
+    cmp dword [apple_count], 5
+    jl .spawn_apple              ; Jump if less than 5
     
-.continue_game:                    
+    
+.continue_game:
     ; Calculate new head position
     mov eax, [snake_head]
     mov ebx, eax
@@ -83,6 +84,7 @@ kernel_entry:
     jge .check_x_max
     mov ecx, 79                     ; Wrap to right edge
     jmp .check_y
+    
 .check_x_max:
     cmp ecx, 80
     jl .check_y
@@ -94,27 +96,33 @@ kernel_entry:
     jge .check_y_max
     mov edx, 24                     ; Wrap to bottom
     jmp .no_wrap
+    
 .check_y_max:
     cmp edx, 25
     jl .no_wrap
     mov edx, 0                      ; Wrap to top
-    
-.no_wrap:
-    ; Advance head index (circular)
+    .no_wrap:
+    ; Advance head
     inc dword [snake_head]
     mov eax, [snake_head]
     cmp eax, max_length
     jl .no_wrap_head
-    mov dword [snake_head], 0       ; Wrap around
-.no_wrap_head:
+    mov dword [snake_head], 0
     
+.no_wrap_head:
     ; Store new head position
     mov eax, [snake_head]
     shl eax, 2
     mov [snake_x + eax], ecx
     mov [snake_y + eax], edx
     
-    ; Erase tail
+    ; CHECK COLLISION (ECX=new_x, EDX=new_y)
+    call check_apple_collision  ; Returns EAX: 0=collision, 1=no collision
+    cmp eax, 0
+    je .skip_tail_erase         ; If collision, skip tail erase
+    
+.erase_tail:
+    ; Normal movement - erase tail
     mov eax, [snake_tail]
     shl eax, 2
     mov ebx, [snake_x + eax]
@@ -127,15 +135,13 @@ kernel_entry:
     call vga_write_char_at
     popad
     
-    ; Advance tail index (circular)
+    ; Advance tail index
     inc dword [snake_tail]
     mov eax, [snake_tail]
     cmp eax, max_length
-    
-    jl .no_wrap_tail
+    jl .skip_tail_erase
     mov dword [snake_tail], 0
-.no_wrap_tail:
-    
+.skip_tail_erase:               ; why did I forget this bs
     ; Draw new head
     mov eax, [snake_head]
     shl eax, 2
@@ -149,39 +155,37 @@ kernel_entry:
     call vga_write_char_at
     popad
     
-    ; NEW: Use timer-based delay instead of busy-wait
+    ; Timer delay
     movzx eax, byte [current_direction]
     cmp eax, DIR_UP
     je .vertical_delay
     cmp eax, DIR_DOWN
     je .vertical_delay
     
-    ; Horizontal movement: wait 3 frames (~50ms at 60Hz)
     mov eax, 3
     call wait_frames
     jmp .game
     
 .vertical_delay:
-    ; Vertical movement: wait 5 frames (~83ms at 60Hz) to compensate for tall pixels
     mov eax, 5
     call wait_frames
     jmp .game
 
-.game_over:
-    ; Print game over message
+.paused:
+    ; Print pause
     mov eax, 30
     mov ebx, 12
-    mov ecx, game_over_msg
+    mov ecx, paused
     mov edx, 0x0C                   ; Bright red
     call vga_print_string_at
-    
-    ; Halt
-    cli
-    hlt
+	cmp byte [game_running], 0
+	je .paused
+	jmp .game
  
 .spawn_apple:
     call xorshift32
     push eax
+    mov ecx, [apple_count]
     
     ; Use lower 16 bits for X
     movzx eax, ax
@@ -208,12 +212,72 @@ kernel_entry:
     call vga_write_char_at
     pop ecx
     
-    inc dword [apple_count]         ; FIX: Use dword increment
+    inc dword [apple_count]         ; dword again bru stop confusing them
     jmp .continue_game
 
 ; ============================================================================
 ; Helper Functions
 ; ============================================================================
+; collision check time
+; idea: basically just store x and y of current head coords and compare to each food x and y 
+; jump if hit
+check_apple_collision:
+    mov [temp_head_x], ecx
+    mov [temp_head_y], edx
+    xor edi, edi
+    
+.check_loop:
+    cmp edi, [apple_count]
+    jge .no_collision
+    
+    ; Check X
+    mov eax, [food_x + edi*4]
+    cmp eax, [temp_head_x]
+    jne .next_apple
+    
+    ; Check Y
+    mov eax, [food_y + edi*4]
+    cmp eax, [temp_head_y]
+    je .respawn_apple           ; Changed name
+    
+.next_apple:
+    inc edi
+    jmp .check_loop
+    
+.respawn_apple:
+    ; Respawn apple at index EDI immediately
+    ; otherwise u overwrite it, more efficient to do that instead of storing it o.0
+    call xorshift32
+    push eax
+    
+    movzx eax, ax
+    xor edx, edx
+    mov ebx, 80
+    div ebx
+    mov [food_x + edi*4], edx
+    
+    pop eax
+    shr eax, 16
+    xor edx, edx
+    mov ebx, 25
+    div ebx
+    mov [food_y + edi*4], edx
+    
+    ; Redraw apple
+    push edi
+    mov eax, [food_x + edi*4]
+    mov ebx, [food_y + edi*4]
+    mov ecx, 'O'
+    mov edx, 0x0C
+    call vga_write_char_at
+    pop edi
+    
+    xor eax, eax
+    ret
+    
+.no_collision:
+    mov eax, 1
+    ret
 
 xorshift32:
     push ebx
@@ -303,6 +367,8 @@ keyboard_handler:
 
 ; Variables
 max_length    equ 100
+temp_head_y   dd 0
+temp_head_x   dd 0
 snake_x       times 100 dd 0
 snake_y       times 100 dd 0
 food_x        times 10 dd 0      ; Array for multiple apples
@@ -313,7 +379,8 @@ snake_len     dd 4
 rng_seed      dd 88172645        ; seed for "random" coord generation
 apple_count   dd 0               ; Changed to dword for consistency
 
-game_over_msg db 'GAME OVER - Press any key to exit', 0
+
+paused db 'Paused', 0
 
 ; IDT structures
 idt_desc:
