@@ -65,7 +65,9 @@ sudo apt install nasm qemu-system-x86
 ```
 ### Compile
 ```
-; you can compile boot and stage 2 but they wont change so it wouldnt matter
+nasm -f bin boot/first/boot.asm -o build/boot.bin
+nasm -f bin boot/second/stage2.asm -o build/stage2.bin
+mkdir -p build/images
 nasm -f bin -I kernel/ kernel/main_kernel.asm -o build/kernel.bin
 ; and then you can all format them together to make it bootable
 python3 tools/genfs_v2_builder.py build/boot.bin build/images/genos.img build/stage2.bin build/kernel.bin
