@@ -54,12 +54,16 @@ kernel_entry:
     je .paused
     
     ; Check if we need to spawn apples, use dword bru
-    cmp dword [apple_count], 5
+    cmp dword [apple_count], 10
     jl .spawn_apple              ; Jump if less than 5
     
     
 .continue_game:
-    ; Calculate new head position
+	; calculate current length of snake
+	call calculate_length
+	; convert and display the current number
+    call display_number
+	; Calculate new head position
     mov eax, [snake_head]
     mov ebx, eax
     shl ebx, 2
@@ -141,8 +145,10 @@ kernel_entry:
     cmp eax, max_length
     jl .skip_tail_erase
     mov dword [snake_tail], 0
-.skip_tail_erase:               ; why did I forget this bs
-    ; Draw new head
+    
+; note: this advances the snake by skipping 
+.skip_tail_erase:               
+    ; Draw new head 
     mov eax, [snake_head]
     shl eax, 2
     mov ebx, [snake_x + eax]
@@ -218,6 +224,63 @@ kernel_entry:
 ; ============================================================================
 ; Helper Functions
 ; ============================================================================
+; To get current length:
+calculate_length:
+    mov eax, [snake_head]
+    mov ebx, [snake_tail]
+    sub eax, ebx
+    jge .positive
+    add eax, max_length    ; Handle wraparound
+.positive:
+    inc eax                ; +1 because both head and tail are inclusive
+    ret
+
+; Helper: Convert EAX to string, write at (display_x, display_y)
+; Preserves all registers
+display_number:
+    pushad
+    
+    ; Convert to string in buffer
+    mov edi, length_buffer
+    mov ebx, 10
+    mov ecx, 0
+    
+    ; Handle zero
+    test eax, eax
+    jnz .convert
+    mov byte [edi], '0'
+    mov byte [edi+1], 0
+    jmp .display
+    
+.convert:
+    ; Build string backwards in temp buffer
+    lea edi, [length_buffer + 9]  ; Start at end
+    mov byte [edi], 0              ; Null terminator
+    dec edi
+    
+.push_digits:
+    xor edx, edx
+    div ebx
+    add dl, '0'
+    mov [edi], dl
+    dec edi
+    test eax, eax
+    jnz .push_digits
+    
+    ; EDI now points to first digit
+    inc edi
+    
+.display:
+    ; Draw the string
+    mov eax, 0           ; x position
+    mov ebx, 0           ; y position  
+    mov ecx, edi         ; string pointer
+    mov edx, 0x0C        ; color
+    call vga_print_string_at
+    
+    popad
+    ret
+    
 ; collision check time
 ; idea: basically just store x and y of current head coords and compare to each food x and y 
 ; jump if hit
@@ -324,7 +387,9 @@ check_apple_collision:
     mov edx, 0x0C
     call vga_write_char_at
     pop edi
-    
+
+	inc dword [snake_len] 
+
     xor eax, eax
     ret
     
@@ -406,6 +471,18 @@ keyboard_handler:
     popad
     iret
 
+%if 0
+so it seems that with this if 0 statement, I can create a conditional block that never gets evaluated and therefor create a multiline comment in assembly, imma abuse the hell out of that.
+; =============================================================================
+; Issues found
+; =============================================================================
+apple_race:
+	There was a nasty race condition inside of the apple spawn logic and body redraw logic.
+	When an apple generates the pseudorandom coordinates for the next spawnpoint, it may overlap with the snakes body
+circular_buffer:
+	With max_length equ 100, the circular buffer is getting corrupted or overwritten at a certain length, will have to implement a length param to see at which point to correlate the issue
+
+%endif
 ; ============================================================================
 ; Include Drivers
 ; ============================================================================
@@ -419,6 +496,8 @@ keyboard_handler:
 ; ============================================================================
 
 ; Variables
+length_buffer times 11 db 0    
+
 max_length    equ 100
 temp_head_y   dd 0
 temp_head_x   dd 0
@@ -429,11 +508,12 @@ food_y        times 10 dd 0      ; Array for multiple apples
 snake_head    dd 3
 snake_tail    dd 0
 snake_len     dd 4
+
 rng_seed      dd 88172645        ; seed for "random" coord generation
 apple_count   dd 0               ; Changed to dword for consistency
 
-temp_spawn_x  dd 0 		 ; just realised theres a nasty race: if an apple spawns inside the snake, it gets overwritten in the next frame
-temp_spawn_y  dd 0		 ; ill have to store a potential spawn and check for collisions 
+temp_spawn_x  dd 0 		
+temp_spawn_y  dd 0		 
 paused db 'Paused', 0
 
 ; IDT structures
