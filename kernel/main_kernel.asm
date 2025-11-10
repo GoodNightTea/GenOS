@@ -6,16 +6,19 @@ kernel_entry:
     cli
     
     call setup_idt
-    call setup_timer_idt        ; setup timer interrupt
+    call setup_timer_idt
     call init_pics
-    call init_timer             ; init PIT
+    call init_timer
     sti
     
-    ; Clear screen
-    mov eax, 0x00
-    call vga_clear_screen
+    ; Setup palette colors
+    call setup_snake_palette
     
-    ; INITIALIZE SNAKE PROPERLY
+    ; Clear screen to black
+    mov al, 0
+    call mode13_clear_screen
+    
+    ; INITIALIZE SNAKE PROPERLY (grid coords, not pixels)
     mov dword [snake_x + 0], 17
     mov dword [snake_x + 4], 18
     mov dword [snake_x + 8], 19
@@ -40,9 +43,7 @@ kernel_entry:
     mov eax, [snake_x + ecx]
     mov ebx, [snake_y + ecx]
     pushad
-    mov ecx, '#'
-    mov edx, 0x2A
-    call vga_write_char_at
+    call draw_snake_segment
     popad
     pop ecx
     inc ecx
@@ -53,17 +54,16 @@ kernel_entry:
     cmp byte [game_running], 0
     je .paused
     
-    ; Check if we need to spawn apples, use dword bru
+    ; Check if we need to spawn apples
     cmp dword [apple_count], 10
-    jl .spawn_apple              ; Jump if less than 5
-    
+    jl .spawn_apple
     
 .continue_game:
-	; calculate current length of snake
-	call calculate_length
-	; convert and display the current number
+    ; Display current length at top-left (once we get the font driver working ._.)
+    call calculate_length
     call display_number
-	; Calculate new head position
+    
+    ; Calculate new head position
     mov eax, [snake_head]
     mov ebx, eax
     shl ebx, 2
@@ -75,37 +75,38 @@ kernel_entry:
     ; Get direction delta
     push ecx
     push edx
-    call get_direction_delta        ; Returns EAX=delta_x, EBX=delta_y
+    call get_direction_delta
     pop edx
     pop ecx
     
     ; Apply movement
-    add ecx, eax                    ; new_x = old_x + delta_x
-    add edx, ebx                    ; new_y = old_y + delta_y
+    add ecx, eax
+    add edx, ebx
     
-    ; Wrap around edges (X axis)
+    ; Wrap around edges (X axis) - 40 columns
     cmp ecx, 0
     jge .check_x_max
-    mov ecx, 79                     ; Wrap to right edge
+    mov ecx, 39
     jmp .check_y
     
 .check_x_max:
-    cmp ecx, 80
+    cmp ecx, 40
     jl .check_y
-    mov ecx, 0                      ; Wrap to left edge
+    mov ecx, 0
     
 .check_y:
-    ; Wrap around edges (Y axis)
+    ; Wrap around edges (Y axis) - 25 rows
     cmp edx, 0
     jge .check_y_max
-    mov edx, 24                     ; Wrap to bottom
+    mov edx, 24
     jmp .no_wrap
     
 .check_y_max:
     cmp edx, 25
     jl .no_wrap
-    mov edx, 0                      ; Wrap to top
-    .no_wrap:
+    mov edx, 0
+    
+.no_wrap:
     ; Advance head
     inc dword [snake_head]
     mov eax, [snake_head]
@@ -120,10 +121,10 @@ kernel_entry:
     mov [snake_x + eax], ecx
     mov [snake_y + eax], edx
     
-    ; CHECK COLLISION (ECX=new_x, EDX=new_y)
-    call check_apple_collision  ; Returns EAX: 0=collision, 1=no collision
+    ; CHECK COLLISION
+    call check_apple_collision
     cmp eax, 0
-    je .skip_tail_erase         ; If collision, skip tail erase
+    je .skip_tail_erase
     
 .erase_tail:
     ; Normal movement - erase tail
@@ -134,9 +135,7 @@ kernel_entry:
     pushad
     mov eax, ebx
     mov ebx, ecx
-    mov ecx, ' '
-    mov edx, 0x00
-    call vga_write_char_at
+    call erase_cell
     popad
     
     ; Advance tail index
@@ -146,9 +145,8 @@ kernel_entry:
     jl .skip_tail_erase
     mov dword [snake_tail], 0
     
-; note: this advances the snake by skipping 
-.skip_tail_erase:               
-    ; Draw new head 
+.skip_tail_erase:
+    ; Draw new head
     mov eax, [snake_head]
     shl eax, 2
     mov ebx, [snake_x + eax]
@@ -156,9 +154,7 @@ kernel_entry:
     pushad
     mov eax, ebx
     mov ebx, ecx
-    mov ecx, '#'
-    mov edx, 0x2A
-    call vga_write_char_at
+    call draw_snake_segment
     popad
     
     ; Timer delay
@@ -178,109 +174,132 @@ kernel_entry:
     jmp .game
 
 .paused:
-    ; Print pause
-    mov eax, 30
-    mov ebx, 12
-    mov ecx, paused
-    mov edx, 0x0C                   ; Bright red
-    call vga_print_string_at
-	cmp byte [game_running], 0
-	je .paused
-	jmp .game
+    ; Display pause message (simplified we will need a font driver)
+    cmp byte [game_running], 0
+    je .paused
+    jmp .game
  
 .spawn_apple:
     call xorshift32
     push eax
     mov ecx, [apple_count]
     
-    ; Use lower 16 bits for X
+    ; Use lower 16 bits for X (0-39)
     movzx eax, ax
     xor edx, edx
-    mov ebx, 80
+    mov ebx, 40
     div ebx
-    mov [food_x + ecx*4], edx       ; Store in array indexed by apple_count
+    mov [food_x + ecx*4], edx
     
-    ; Use upper 16 bits for Y
+    ; Use upper 16 bits for Y (0-24)
     pop eax
     shr eax, 16
     xor edx, edx
     mov ebx, 25
     div ebx
-    mov ecx, [apple_count]          ; Get current apple index
-    mov [food_y + ecx*4], edx       ; Store in array
+    mov ecx, [apple_count]
+    mov [food_y + ecx*4], edx
     
     ; Draw apple
     mov eax, [food_x + ecx*4]
     mov ebx, [food_y + ecx*4]
     push ecx
-    mov ecx, 'O'
-    mov edx, 0x0C
-    call vga_write_char_at
+    call draw_apple
     pop ecx
     
-    inc dword [apple_count]         ; dword again bru stop confusing them
+    inc dword [apple_count]
     jmp .continue_game
-
 ; ============================================================================
 ; Helper Functions
 ; ============================================================================
-; To get current length:
+setup_snake_palette:
+    pushad
+    
+    ; Snake body: Bright green
+    mov al, 42
+    mov bl, 0
+    mov bh, 63
+    mov cl, 0
+    call set_palette_color
+    
+    ; Apple: Bright red
+    mov al, 12
+    mov bl, 63
+    mov bh, 0
+    mov cl, 0
+    call set_palette_color
+    
+    ; White for text/UI
+    mov al, 15
+    mov bl, 63
+    mov bh, 63
+    mov cl, 63
+    call set_palette_color
+    
+    popad
+    ret
+
+set_palette_color:
+    ; Input: AL = index, BL = red, BH = green, CL = blue (0-63)
+    push ax
+    push dx
+    
+    mov dx, 0x03C8
+    out dx, al
+    
+    mov dx, 0x03C9
+    mov al, bl
+    out dx, al
+    mov al, bh
+    out dx, al
+    mov al, cl
+    out dx, al
+    
+    pop dx
+    pop ax
+    ret
+
 calculate_length:
     mov eax, [snake_head]
     mov ebx, [snake_tail]
     sub eax, ebx
     jge .positive
-    add eax, max_length    ; Handle wraparound
+    add eax, max_length
 .positive:
-    inc eax                ; +1 because both head and tail are inclusive
+    inc eax
     ret
 
-; Helper: Convert EAX to string, write at (display_x, display_y)
-; Preserves all registers
+; Display number as boxes (no numbers, just boxes)
 display_number:
     pushad
+     
+    cmp eax, 10
+    jl .single_digit
     
-    ; Convert to string in buffer
-    mov edi, length_buffer
-    mov ebx, 10
-    mov ecx, 0
+    ; For 10+, just show '9+' visually
+    mov eax, 9
     
-    ; Handle zero
-    test eax, eax
-    jnz .convert
-    mov byte [edi], '0'
-    mov byte [edi+1], 0
-    jmp .display
+.single_digit:
+    ; yea this is just a placeholder, just wanted a quick conversion.
+    ; we will need a font driver for this oh mah gaahd
+    mov ebx, eax
+    shl ebx, 2                 
     
-.convert:
-    ; Build string backwards in temp buffer
-    lea edi, [length_buffer + 9]  ; Start at end
-    mov byte [edi], 0              ; Null terminator
-    dec edi
-    
-.push_digits:
-    xor edx, edx
-    div ebx
-    add dl, '0'
-    mov [edi], dl
-    dec edi
-    test eax, eax
-    jnz .push_digits
-    
-    ; EDI now points to first digit
-    inc edi
-    
-.display:
-    ; Draw the string
-    mov eax, 0           ; x position
-    mov ebx, 0           ; y position  
-    mov ecx, edi         ; string pointer
-    mov edx, 0x0C        ; color
-    call vga_print_string_at
+    ; draw the blob 
+    mov eax, 2
+    mov ebx, 2
+    mov ecx, 8
+    mov edx, 8
+    mov esi, 15                ; White
+    call mode13_fill_rect
     
     popad
     ret
+
     
+; ============================================================================
+; Misc LOGIC
+; ============================================================================
 ; collision check time
 ; idea: basically just store x and y of current head coords and compare to each food x and y 
 ; jump if hit
@@ -383,9 +402,7 @@ check_apple_collision:
     push edi
     mov eax, [food_x + edi*4]
     mov ebx, [food_y + edi*4]
-    mov ecx, 'O'
-    mov edx, 0x0C
-    call vga_write_char_at
+    call draw_apple
     pop edi
 
 	inc dword [snake_len] 
@@ -416,6 +433,9 @@ xorshift32:
     pop ebx
     ret
 
+; ============================================================================
+; IDT Setup
+; ============================================================================
 setup_idt:
     pushad
     
@@ -474,20 +494,20 @@ keyboard_handler:
 %if 0
 so it seems that with this if 0 statement, I can create a conditional block that never gets evaluated and therefor create a multiline comment in assembly, imma abuse the hell out of that.
 ; =============================================================================
-; Issues found
+; Actual issues found
 ; =============================================================================
 apple_race:
 	There was a nasty race condition inside of the apple spawn logic and body redraw logic.
 	When an apple generates the pseudorandom coordinates for the next spawnpoint, it may overlap with the snakes body
 circular_buffer:
-	With max_length equ 100, the circular buffer is getting corrupted or overwritten at a certain length, will have to implement a length param to see at which point to correlate the issue
-
+	With max_length equ 100, the circular buffer is 
 %endif
 ; ============================================================================
 ; Include Drivers
 ; ============================================================================
 
-%include "vga/min_snake_vga.asm"
+;%include "vga/3h_vga.asm"
+%include "vga/13h_vga.asm"
 %include "keyboard/keyboard_driver.asm"
 %include "timer/timer_driver.asm"
 
@@ -496,7 +516,7 @@ circular_buffer:
 ; ============================================================================
 
 ; Variables
-length_buffer times 11 db 0    
+length_buffer times 11 db 0    ; "4294967295\0" worst case for 32-bit
 
 max_length    equ 100
 temp_head_y   dd 0
@@ -515,6 +535,12 @@ apple_count   dd 0               ; Changed to dword for consistency
 temp_spawn_x  dd 0 		
 temp_spawn_y  dd 0		 
 paused db 'Paused', 0
+
+; ============================================================================
+; Snake 13h VGA transition
+; ============================================================================
+CELL_SIZE equ 8
+
 
 ; IDT structures
 idt_desc:
