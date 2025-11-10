@@ -14,35 +14,24 @@ start:
     ; Store boot drive
     mov [boot_drive], dl
     
-    ; Load Stage 2 bootloader (1 sector)
-    mov si, loading_stage2_msg
-    call print_string
+
     mov ax, 2               ; Stage 2 at sector 2
     mov bx, 0x1000          ; Load to 0x1000
     mov cx, 1               ; Read 1 sector
     call read_sectors
-    jc disk_error
+
     
     ; Load kernel (8 sectors for 4KB)
-    mov si, loading_kernel_msg
-    call print_string
+
     mov ax, 3               ; Kernel starts at sector 3  
     mov bx, 0x2000          ; Load to 0x2000 (temporary)
     mov cx, 8               ; Read 8 sectors (4KB)
     call read_sectors
-    jc disk_error
-    
-    ; Success message
-    mov si, success_msg
-    call print_string
+
     
     ; Jump to Stage 2
     jmp 0x1000
 
-disk_error:
-    mov si, error_msg
-    call print_string
-    jmp halt
 
 halt:
     hlt
@@ -60,7 +49,6 @@ read_sectors:
     
     ; Read one sector at current position
     call read_single_sector
-    jc .error               ; Exit on error
     
     ; Move to next sector and buffer position
     pop ax                  ; Restore current sector
@@ -73,14 +61,6 @@ read_sectors:
     jnz .read_loop          ; Continue if more sectors to read
     
     clc                     ; Clear carry (success)
-    popa
-    ret
-
-.error:
-    pop ax                  ; Clean stack
-    pop bx
-    pop cx
-    stc                     ; Set carry (error)
     popa
     ret
 
@@ -114,25 +94,6 @@ read_single_sector:
     popa
     ret
 
-; Print null-terminated string
-print_string:
-    pusha
-.loop:
-    lodsb
-    test al, al
-    jz .done
-    mov ah, 0x0E
-    int 0x10
-    jmp .loop
-.done:
-    popa
-    ret
-
-; Data section
-loading_stage2_msg  db 'GenOS: Loading Stage 2...', 13, 10, 0
-loading_kernel_msg  db 'GenOS: Loading kernel (4KB)...', 13, 10, 0  
-success_msg         db 'GenOS: Boot components loaded. Starting Stage 2...', 13, 10, 0
-error_msg           db 'GenOS: Disk read error!', 13, 10, 0
 
 boot_drive          db 0
 
