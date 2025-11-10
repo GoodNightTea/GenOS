@@ -1,0 +1,184 @@
+%if 0
+I realised that assembly is fine and dandy until the logic is getting more and more intertwined/complexer
+so I created this pseudo code to keep track of the games internal logic. 
+At the current state I have more than 521 lines of code, I am gonna have to split this logic up or create more drivers,
+otherwise I will get lost in the sauce of the spaghetti code. In the meanwhile, enjoy the meal ;)
+%endif
+
+================================================================================
+Kernel init
+================================================================================
+1. Setup stack pointer at 0x7C00
+2. Disable interrupts (cli)
+3. Initialize interrupt system:
+   - Setup IDT (Interrupt Descriptor Table)
+   - Setup timer interrupt handler
+   - Initialize PICs (Programmable Interrupt Controllers)
+   - Initialize PIT (Programmable Interval Timer) 
+4. Enable interrupts (sti)
+5. Clear VGA screen
+
+================================================================================
+Game init
+================================================================================
+Snake setup:
+   - snake_x[0..3] = {17, 18, 19, 20}  // Initial X positions
+   - snake_y[0..3] = {12, 12, 12, 12}  // Initial Y positions (horizontal)
+   - snake_head = 3                     // Points to front segment
+   - snake_tail = 0                     // Points to back segment
+   - snake_len = 4
+   
+Draw initial snake:
+   for i = 0 to 3:
+      draw '#' at (snake_x[i], snake_y[i]) with color 0x2A
+
+================================================================================
+Main loop
+================================================================================
+while true:
+   // check if game is running
+   if game_running == 0:
+      display "Paused" at center
+      wait until game_running == 1
+      continue
+   
+   // check if we need to spawn apples
+   if apple_count < 10:
+      spawn_new_apple()
+      continue to next frame
+   
+   // display length
+   length = calculate_length()        // (head - tail + 1) mod max_length
+   display_number(length) at (0, 0)
+   
+   // delta movement
+   old_head_index = snake_head
+   (old_x, old_y) = snake[old_head_index]
+   
+   (delta_x, delta_y) = get_direction_delta()  // From keyboard state
+   
+   new_x = old_x + delta_x
+   new_y = old_y + delta_y
+   
+   // Wrap around screen edges
+   if new_x < 0:    new_x = 79
+   if new_x >= 80:  new_x = 0
+   if new_y < 0:    new_y = 24
+   if new_y >= 25:  new_y = 0
+   
+   // move head
+   snake_head = (snake_head + 1) mod max_length
+   snake[snake_head] = (new_x, new_y)
+   
+   // collision check
+   ate_apple = check_apple_collision(new_x, new_y)
+   
+   if ate_apple:
+      // Apple was respawned at new location
+      // Tail is NOT erased → snake grows by 1
+      goto draw_head
+   else:
+      // erase tail
+      (tail_x, tail_y) = snake[snake_tail]
+      erase ' ' at (tail_x, tail_y)
+      snake_tail = (snake_tail + 1) mod max_length
+   
+   
+   draw_head:
+      draw '#' at (new_x, new_y) with color 0x2A
+   
+   // frame delay
+   if direction is UP or DOWN:
+      wait_frames(5)      // Slower vertical movement
+   else:
+      wait_frames(3)      // Faster horizontal movement
+   // REASON: Y movement is faster due to the characters height of each "pixel"
+================================================================================
+HELPER FUNCTIONS
+================================================================================
+
+calculate_length():
+   diff = snake_head - snake_tail
+   if diff < 0:
+      diff += max_length     // Handle circular buffer wraparound
+   return diff + 1
+
+spawn_new_apple():
+   rng_value = xorshift32()
+   x = (rng_value & 0xFFFF) mod 80
+   y = (rng_value >> 16) mod 25
+   
+   food_x[apple_count] = x
+   food_y[apple_count] = y
+   draw 'O' at (x, y) with color 0x0C
+   apple_count++
+
+check_apple_collision(head_x, head_y):
+   for i = 0 to apple_count-1:
+      if food_x[i] == head_x AND food_y[i] == head_y:
+         // Respawn this apple NOW
+         rng_value = xorshift32()
+         food_x[i] = (rng_value & 0xFFFF) mod 80
+         food_y[i] = (rng_value >> 16) mod 25
+         draw 'O' at new position
+         snake_len++
+         return TRUE   // Collision happened
+   return FALSE       // No collision
+
+xorshift32():
+   seed ^= seed << 13
+   seed ^= seed >> 17
+   seed ^= seed << 5
+   return seed
+
+get_direction_delta():
+   // Read from keyboard state (set by interrupt handler)
+   switch current_direction:
+      DIR_UP:    return (0, -1)
+      DIR_DOWN:  return (0, +1)
+      DIR_LEFT:  return (-1, 0)
+      DIR_RIGHT: return (+1, 0)
+
+wait_frames(count):
+   target = frame_counter + count
+   while frame_counter < target:
+      hlt   // Wait for timer interrupt
+
+================================================================================
+Interrupt handler (run asynchronously)
+================================================================================
+
+timer_interrupt():
+   frame_counter++
+   send_eoi_to_pic()
+
+keyboard_interrupt():
+   scancode = read_from_port_0x60()
+   
+   // Arrow key scancodes
+   if scancode == 0x48: current_direction = DIR_UP
+   if scancode == 0x50: current_direction = DIR_DOWN
+   if scancode == 0x4B: current_direction = DIR_LEFT
+   if scancode == 0x4D: current_direction = DIR_RIGHT
+   if scancode == SPACE: game_running = !game_running
+   
+   send_eoi_to_pic()
+
+================================================================================
+Data structuers used
+================================================================================
+
+Circular Buffer (Ring Buffer):
+   snake_x[100]  // X coordinates of all segments
+   snake_y[100]  // Y coordinates of all segments
+   snake_head    // Index of head (newest segment)
+   snake_tail    // Index of tail (oldest segment)
+   
+   Visual representation:
+   [tail=15] → [segments] → [head=20]
+   Actual length = (20 - 15 + 1) = 6 segments
+
+Apple Array:
+   food_x[10]    // X positions of up to 10 apples
+   food_y[10]    // Y positions
+   apple_count   // Current number of apples on screen
