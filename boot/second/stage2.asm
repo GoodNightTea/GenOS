@@ -4,41 +4,33 @@
 ; GenOS Stage 2 Bootloader
 ; Transitions from 16-bit real mode to 32-bit protected mode
 
+%if 0
+my smart ass said I wont need to change boot or stage2 anymore cause we got everything
+this came to bite me in the ass after wanting to switch to 13h VGA. 
+I questioned why tf it keeps crashing, until I searched out and found out that switching VGA state is done in the bios...
+yea here we are yipee
+%endif
+[BITS 16]
+[ORG 0x1000]
+
 stage2_start:
-    ; Print startup message
-    mov si, stage2_msg
-    call print_string_16
+    ; Set Mode 13h while still in real mode
+    mov ax, 0x0013
+    int 0x10
     
-    ; Enable A20 line using fast method
+    ; NOW enter protected mode
     in al, 0x92
     or al, 2
     out 0x92, al
     
-    ; Load Global Descriptor Table
     lgdt [gdt_descriptor]
     
-    ; Enter 32-bit protected mode
-    cli                     ; Disable interrupts
+    cli
     mov eax, cr0
-    or eax, 1               ; Set PE (Protection Enable) bit
+    or eax, 1
     mov cr0, eax
     
-    ; Far jump to clear prefetch queue and enter 32-bit mode
     jmp 0x08:protected_mode_start
-
-; Print string in 16-bit mode
-print_string_16:
-    pusha
-.loop:
-    lodsb
-    test al, al
-    jz .done
-    mov ah, 0x0E            ; BIOS teletype
-    int 0x10
-    jmp .loop
-.done:
-    popa
-    ret
 
 ; === 32-BIT PROTECTED MODE CODE ===
 [BITS 32]
@@ -94,9 +86,6 @@ gdt_end:
 gdt_descriptor:
     dw gdt_end - gdt_start - 1  ; GDT size - 1
     dd gdt_start                ; GDT base address
-
-; Data section
-stage2_msg   db 'GenOS Stage 2: Entering 32-bit protected mode...', 13, 10, 0
 
 ; Pad to 512 bytes
 times 512-($-$$) db 0
