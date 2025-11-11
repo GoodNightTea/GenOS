@@ -18,6 +18,7 @@ kernel_entry:
     mov al, 0
     call mode13_clear_screen
     
+    
     ; INITIALIZE SNAKE PROPERLY (grid coords, not pixels)
     mov dword [snake_x + 0], 17
     mov dword [snake_x + 4], 18
@@ -59,7 +60,6 @@ kernel_entry:
     jl .spawn_apple
     
 .continue_game:
-    ; Display current length at top-left (once we get the font driver working ._.)
     call calculate_length
     call display_number
     
@@ -157,28 +157,20 @@ kernel_entry:
     call draw_snake_segment
     popad
     
-    ; Timer delay
-    movzx eax, byte [current_direction]
-    cmp eax, DIR_UP
-    je .vertical_delay
-    cmp eax, DIR_DOWN
-    je .vertical_delay
-    
     mov eax, 3
     call wait_frames
     jmp .game
     
-.vertical_delay:
-    mov eax, 5
-    call wait_frames
-    jmp .game
+
 
 .paused:
-    ; Display pause message (simplified we will need a font driver)
-    cmp byte [game_running], 0
-    je .paused
+.pause_loop:
+    hlt                              
+    cmp byte [game_running], 1       
+    jne .pause_loop 
     jmp .game
- 
+
+
 .spawn_apple:
     call xorshift32
     push eax
@@ -269,33 +261,57 @@ calculate_length:
     inc eax
     ret
 
-; Display number as boxes (no numbers, just boxes)
 display_number:
+; fill_rect help
+; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
     pushad
-     
+    mov eax, 0
+    mov ebx, 0
+    mov ecx, 18
+    mov edx, 10
+    mov esi, 0x00
+    call mode13_fill_rect
+    
+    ; Handle numbers 0-99
     cmp eax, 10
     jl .single_digit
     
-    ; For 10+, just show '9+' visually
-    mov eax, 9
+    ; Two digits - draw tens place
+    mov ebx, 10
+    xor edx, edx
+    div ebx                    ; EAX = tens, EDX = ones
     
-.single_digit:
-    ; yea this is just a placeholder, just wanted a quick conversion.
-    ; we will need a font driver for this oh mah gaahd
-    mov ebx, eax
-    shl ebx, 2                 
+    push edx                   ; Save ones digit
     
-    ; draw the blob 
+    add al, '0'
+    mov cl, al
     mov eax, 2
     mov ebx, 2
-    mov ecx, 8
-    mov edx, 8
-    mov esi, 15                ; White
-    call mode13_fill_rect
+    mov dl, 15
+    call draw_char
+    
+    ; Draw ones place
+    pop eax                    ; Get ones digit back
+    add al, '0'
+    mov cl, al
+    mov eax, 10                ; X = 10 (next to first digit)
+    mov ebx, 2
+    mov dl, 15
+    call draw_char
     
     popad
     ret
-
+    
+.single_digit:
+    add al, '0'
+    mov cl, al
+    mov eax, 2
+    mov ebx, 2
+    mov dl, 15
+    call draw_char
+    
+    popad
+    ret
     
 ; ============================================================================
 ; Misc LOGIC
@@ -387,7 +403,7 @@ check_apple_collision:
     
     movzx eax, ax
     xor edx, edx
-    mov ebx, 80
+    mov ebx, 40 
     div ebx
     mov [food_x + edi*4], edx
     
@@ -499,14 +515,16 @@ so it seems that with this if 0 statement, I can create a conditional block that
 apple_race:
 	There was a nasty race condition inside of the apple spawn logic and body redraw logic.
 	When an apple generates the pseudorandom coordinates for the next spawnpoint, it may overlap with the snakes body
-circular_buffer:
-	With max_length equ 100, the circular buffer is 
+out-of-bounds:
+	there was an oob with the apple respawn logic where I forgot that now with the 13h display I had to recalculate the width of where apples are allowed to spawn and they just spawned outside of the border and made them "despawn"
+second_apple_race:
+	there was ANOTHER apple race where sure I checked if there was a body but I didnt check for the potential of soon-to-be deleted tail, dont ask how, I dont understand it either but it should be gone (hopefully)
 %endif
 ; ============================================================================
 ; Include Drivers
 ; ============================================================================
 
-;%include "vga/3h_vga.asm"
+%include "fonts/font1.asm"
 %include "vga/13h_vga.asm"
 %include "keyboard/keyboard_driver.asm"
 %include "timer/timer_driver.asm"
