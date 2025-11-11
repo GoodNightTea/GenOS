@@ -1,6 +1,6 @@
-; the most beautiful and advanced font (idk if you can call a bitmap from 0-9 a font but yea shush)
+; the most beautiful and advanced font
 font_data:
-    ; Character '0'
+    ; Character '0' for some reason the 
     db 0b00111100
     db 0b01000010
     db 0b01000110
@@ -94,6 +94,254 @@ font_data:
     db 0b00000010
     db 0b01111100
     db 0b00000000
+    ; Character 'A'
+    db 0b01111100
+    db 0b10000010
+    db 0b10000010
+	db 0b11111110
+    db 0b10000010
+    db 0b10000010
+    db 0b10000010
+    db 0b00000000
+    ; Character 'B'
+    db 0b01111100
+    db 0b10000010
+    db 0b10000010
+    db 0b11111100
+    db 0b10000010
+    db 0b10000010
+    db 0b11111100
+    db 0b00000000
+    ; Character 'C'
+    db 0b00111100
+    db 0b01000000
+    db 0b10000000
+    db 0b10000000
+    db 0b10000000
+    db 0b01000000
+    db 0b00111100
+    db 0b00000000
+
+    ; Character 'D'
+    db 0b11111000
+    db 0b10000100
+    db 0b10000010
+    db 0b10000010
+    db 0b10000010
+    db 0b10000100
+    db 0b11111000
+    db 0b00000000
+
+    ; Character 'E'
+    db 0b11111100
+    db 0b10000000
+    db 0b10000000
+    db 0b11110000
+    db 0b10000000
+    db 0b10000000
+    db 0b11111100
+    db 0b00000000
+
+    ; Character 'F'
+    db 0b11111100
+    db 0b10000000
+    db 0b10000000
+    db 0b11110000
+    db 0b10000000
+    db 0b10000000
+    db 0b10000000
+    db 0b00000000
+
+    ; Character 'G'
+    db 0b00111100
+    db 0b01000000
+    db 0b10000000
+    db 0b10011100
+    db 0b10000100
+    db 0b10000100
+    db 0b01111000
+    db 0b00000000
+
+    ; Character 'H'
+    db 0b10000001
+    db 0b10000001
+    db 0b10000001
+    db 0b11111111
+    db 0b10000001
+    db 0b10000001
+    db 0b10000001
+    db 0b00000000
+
+    ; Character 'I'
+    db 0b11111111
+    db 0b00010000
+    db 0b00010000
+    db 0b00010000
+    db 0b00010000
+    db 0b00010000
+    db 0b11111111
+    db 0b00000000
+
+    ; Character 'J'
+    db 0b11111110
+    db 0b00000010
+    db 0b00000010
+    db 0b00000010
+    db 0b00000010
+    db 0b10000100
+    db 0b01111000
+    db 0b00000000
+
+    ; Character 'K'
+    db 0b10100000
+    db 0b10100000
+    db 0b11000000
+    db 0b10100000
+    db 0b10010000
+    db 0b10001000
+    db 0b10001000
+    db 0b00000000
+
+    ; Character 'L'
+    db 0b10000000
+    db 0b10000000
+    db 0b10000000
+    db 0b10000000
+    db 0b10000000
+    db 0b10000000
+    db 0b11111110
+    db 0b00000000
+
+    ; Character 'M'
+    db 0b11000110
+    db 0b10101010
+    db 0b10101010
+    db 0b10010010
+    db 0b10000010
+    db 0b10000010
+    db 0b10000010
+    db 0b00000000
+    ; Character 'N'
+    db 0b11000010
+    db 0b10100010
+    db 0b10010010
+    db 0b10010010
+    db 0b10001010
+    db 0b10001010
+    db 0b10000110
+    db 0b00000000
+    ; Character 'O'
+    db 0b00111100
+    db 0b01000010
+    db 0b10000001
+    db 0b10000001
+    db 0b10000001
+    db 0b01000010
+    db 0b00111100
+    db 0b00000000
+    ; Character 'L'
+    db 0b11111000
+    db 0b10000100
+    db 0b10000100
+    db 0b11111000
+    db 0b10000000
+    db 0b10000000
+    db 0b10000000
+    db 0b00000000
+    ; Character 'Q'
+    db 0b00111100
+    db 0b01000010
+    db 0b10000001
+    db 0b10000001
+    db 0b10000001
+    db 0b01001010
+    db 0b00111100
+    db 0b00000010
+    ; Character 'R'
+    db 0b11111100
+    db 0b11000010
+    db 0b10000010
+    db 0b11111100
+    db 0b10000010
+    db 0b10001010
+    db 0b10000010
+    db 0b00000000
+    ; Character 'S'
+    db 0b01111100
+    db 0b10000000
+    db 0b01000000
+    db 0b00111000
+    db 0b00000110
+    db 0b00000010
+    db 0b00111100
+    db 0b00000000
+
+    ; Character 'T'
+    db 0b11111111
+    db 0b10010001
+    db 0b00010000
+    db 0b00010000
+    db 0b00010000
+    db 0b00010000
+    db 0b00010000
+    db 0b00000000
+
+    ; Character 'U'
+    db 0b10000001
+    db 0b10000001
+    db 0b10000001
+    db 0b10000001
+    db 0b10000001
+    db 0b01000010
+    db 0b00111100
+    db 0b00000000
+
+    ; Character 'V'
+    db 0b10000001
+    db 0b10000001
+    db 0b01000010
+    db 0b01000010
+    db 0b00100100
+    db 0b00011000
+    db 0b00011000
+    db 0b00000000
+    ; Character 'W'
+    db 0b10000001
+    db 0b10000001
+    db 0b10000001
+    db 0b10010001
+    db 0b10101001
+    db 0b10100101
+    db 0b01000010
+    db 0b00000000
+    ; Character 'X'
+    db 0b10000001
+    db 0b01000100
+    db 0b00101000
+    db 0b00010000
+    db 0b00100100
+    db 0b01000010
+    db 0b10000001
+    db 0b00000000
+    ; Character 'Y'
+    db 0b10000001
+    db 0b01000100
+    db 0b00101000
+    db 0b00010000
+    db 0b00010000
+    db 0b00010000
+    db 0b00010000
+    db 0b00000000
+    ; Character 'Z'
+    db 0b11111111
+    db 0b00000110
+    db 0b00001000
+    db 0b00010000
+    db 0b00100000
+    db 0b01000000
+    db 0b11111111
+    db 0b00000000
+
 draw_char:
     ; EAX = x, EBX = y, CL = ASCII char, DL = color
     pushad
