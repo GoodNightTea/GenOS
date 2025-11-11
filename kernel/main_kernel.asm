@@ -17,7 +17,8 @@ kernel_entry:
     ; Clear screen to black
     mov al, 0
     call mode13_clear_screen
-    
+    call draw_border
+
     
     ; INITIALIZE SNAKE PROPERLY (grid coords, not pixels)
     mov dword [snake_x + 0], 17
@@ -54,11 +55,12 @@ kernel_entry:
     ; Check if game is still running
     cmp byte [game_running], 0
     je .paused
-    
-    ; Check if we need to spawn apples
-    cmp dword [apple_count], 10
-    jl .spawn_apple
-    
+
+
+ 	cmp dword [apple_count], 10  
+    jge .continue_game           ; Changed to JGE (greater or equal)
+    call spawn_single_apple      ; Only spawn if < 10
+
 .continue_game:
     call calculate_length
     call display_number
@@ -84,27 +86,42 @@ kernel_entry:
     add edx, ebx
     
     ; Wrap around edges (X axis) - 40 columns
-    cmp ecx, 0
+    cmp ecx, 3
     jge .check_x_max
-    mov ecx, 39
+    mov ecx, 36
     jmp .check_y
     
+.paused:
+    mov esi, paused          ; Point to string
+	mov eax, 130                 ; X position
+	mov ebx, 80                 ; Y position
+	mov dl, 75                  ; White color
+	call mode13_print_string
+.pause_loop:
+    hlt                              
+    cmp byte [game_running], 1       
+    jne .pause_loop 
+    jmp .game
+
+
+
+
 .check_x_max:
-    cmp ecx, 40
+    cmp ecx, 37
     jl .check_y
-    mov ecx, 0
+    mov ecx, 3
     
 .check_y:
     ; Wrap around edges (Y axis) - 25 rows
-    cmp edx, 0
+    cmp edx, 3
     jge .check_y_max
-    mov edx, 24
+    mov edx, 21
     jmp .no_wrap
     
 .check_y_max:
-    cmp edx, 25
+    cmp edx, 22
     jl .no_wrap
-    mov edx, 0
+    mov edx, 3
     
 .no_wrap:
     ; Advance head
@@ -157,53 +174,169 @@ kernel_entry:
     call draw_snake_segment
     popad
     
+    
     mov eax, 3
     call wait_frames
     jmp .game
     
-
-
-.paused:
-.pause_loop:
-    hlt                              
-    cmp byte [game_running], 1       
-    jne .pause_loop 
-    jmp .game
-
-
-.spawn_apple:
+check_apple_collision:
+    mov [temp_head_x], ecx
+    mov [temp_head_y], edx
+    xor edi, edi
+    
+.check_loop:
+    cmp edi, [apple_count]
+    jge .no_collision
+    
+    ; Check X
+    mov eax, [food_x + edi*4]
+    cmp eax, [temp_head_x]
+    jne .next_apple
+    
+    ; Check Y
+    mov eax, [food_y + edi*4]
+    cmp eax, [temp_head_y]
+    jne .next_apple
+    
+.collision:
+    ; Remove this apple by swapping with last apple
+    mov eax, [apple_count]
+    dec eax                        ; last valid index
+    
+    cmp edi, eax                   ; If we ate the last apple, just decrement
+    je .just_decrement
+    
+    ; Swap last apple into this position
+    mov ebx, [food_x + eax*4]
+    mov [food_x + edi*4], ebx
+    mov ebx, [food_y + eax*4]
+    mov [food_y + edi*4], ebx
+    
+.just_decrement:
+    dec dword [apple_count]
+    call spawn_single_apple
+    inc dword [snake_len]
+    xor eax, eax
+    ret
+    
+.next_apple:
+    inc edi
+    jmp .check_loop
+    
+.no_collision:
+    mov eax, 1                 ; Return 1 = no collision
+    ret
+    
+; Single unified apple spawner
+spawn_single_apple:
+    ; Input: nothing
+    ; Output: spawns 1 apple in valid position and increments apple_count
+    pushad
+    cmp dword [apple_count], 10
+    je .return
+.retry:
     call xorshift32
     push eax
-    mov ecx, [apple_count]
-    
-    ; Use lower 16 bits for X (0-39)
+    ; X: 3-32
     movzx eax, ax
     xor edx, edx
-    mov ebx, 40
+    mov ebx, 30
     div ebx
-    mov [food_x + ecx*4], edx
+    add edx, 3
+    mov [temp_spawn_x], edx
     
-    ; Use upper 16 bits for Y (0-24)
-    pop eax
-    shr eax, 16
+    ; Y: 3-24
+    pop eax    
+    movzx eax, ax
     xor edx, edx
-    mov ebx, 25
+    mov ebx, 16
     div ebx
-    mov ecx, [apple_count]
-    mov [food_y + ecx*4], edx
+    add edx, 3
+    mov [temp_spawn_y], edx
+
+    ; Check if it spawned on snake body
+    mov eax, [temp_spawn_x]
+    mov ebx, [temp_spawn_y]
+    call check_spawn_collision
+    cmp eax, 1
+    je .retry  ; Collision, try again
     
-    ; Draw apple
-    mov eax, [food_x + ecx*4]
-    mov ebx, [food_y + ecx*4]
-    push ecx
+    ; Valid position - store it
+    mov ecx, [apple_count]
+    mov eax, [temp_spawn_x]
+    mov [food_x + ecx*4], eax
+    mov eax, [temp_spawn_y]
+    mov [food_y + ecx*4], eax
+
+	; Draw it
+    mov eax, [temp_spawn_x]
+    mov ebx, [temp_spawn_y]
     call draw_apple
-    pop ecx
     
     inc dword [apple_count]
-    jmp .continue_game
+.return:
+    popad
+    ret
+
+
+
+
 ; ============================================================================
 ; Helper Functions
 ; ============================================================================
+check_spawn_collision:
+	push ecx
+	push edx
+	push edi
+	push esi
+	
+	mov [temp_spawn_x], eax
+	mov [temp_spawn_y], ebx
+	
+	mov ecx, [snake_head]
+	mov edx, [snake_tail]
+	
+	mov esi, edx				; start at tail
+.check_segment:
+	cmp esi, ecx
+	je .after_head
+	mov edi, esi
+	shl edi, 2
+	mov eax, [snake_x + edi]
+	mov ebx, [snake_y + edi]
+	
+	cmp eax, [temp_spawn_x]
+	jne .next_segment
+	cmp ebx, [temp_spawn_y]
+	je .collision_found
+.next_segment:
+	inc esi
+	cmp esi, max_length
+	jl .check_segment
+	xor esi, esi
+	jmp .check_segment
+.after_head:
+	mov edi, ecx
+	shl edi, 2
+	mov eax, [snake_x + edi]
+	mov ebx, [snake_y + edi]
+	cmp eax, [temp_spawn_x]
+	jne .no_collision
+	cmp ebx, [temp_spawn_y]
+	je .collision_found
+.no_collision:
+	xor eax, eax
+	jmp .done
+.collision_found:
+	mov eax, 1
+.done:
+	pop esi
+	pop edi
+	pop edx
+	pop ecx
+	ret
+
+    
 setup_snake_palette:
     pushad
     
@@ -291,6 +424,7 @@ display_number:
     mov dl, 15
     call draw_char
     
+    
     ; Draw ones place
     pop eax                    ; Get ones digit back
     add al, '0'
@@ -314,6 +448,7 @@ display_number:
     popad
     ret
     
+    
 ; ============================================================================
 ; Misc LOGIC
 ; ============================================================================
@@ -321,11 +456,8 @@ display_number:
 ; idea: basically just store x and y of current head coords and compare to each food x and y 
 ; jump if hit
 ; great another collision check, this time for the spawn of an apple
-check_spawn_collision:
-	push ecx
-	push edx
-	push edi
-	push esi
+check_collision:
+	popad
 	
 	mov [temp_spawn_x], eax
 	mov [temp_spawn_y], ebx
@@ -367,69 +499,8 @@ check_spawn_collision:
 .collision_found:
 	mov eax, 1
 .done:
-	pop esi
-	pop edi
-	pop edx
-	pop ecx
+	popad
 	ret
-
-check_apple_collision:
-    mov [temp_head_x], ecx
-    mov [temp_head_y], edx
-    xor edi, edi
-    
-.check_loop:
-    cmp edi, [apple_count]
-    jge .no_collision
-    
-    ; Check X
-    mov eax, [food_x + edi*4]
-    cmp eax, [temp_head_x]
-    jne .next_apple
-    
-    ; Check Y
-    mov eax, [food_y + edi*4]
-    cmp eax, [temp_head_y]
-    je .respawn_apple           ; Changed name
-    
-.next_apple:
-    inc edi
-    jmp .check_loop
-    
-.respawn_apple:
-    ; Respawn apple at index EDI immediately
-    ; otherwise u overwrite it, more efficient to do that instead of storing it o.0
-    call xorshift32
-    push eax
-    
-    movzx eax, ax
-    xor edx, edx
-    mov ebx, 40 
-    div ebx
-    mov [food_x + edi*4], edx
-    
-    pop eax
-    shr eax, 16
-    xor edx, edx
-    mov ebx, 25
-    div ebx
-    mov [food_y + edi*4], edx
-    
-    ; Redraw apple
-    push edi
-    mov eax, [food_x + edi*4]
-    mov ebx, [food_y + edi*4]
-    call draw_apple
-    pop edi
-
-	inc dword [snake_len] 
-
-    xor eax, eax
-    ret
-    
-.no_collision:
-    mov eax, 1
-    ret
 
 xorshift32:
     push ebx
@@ -553,7 +624,8 @@ apple_count   dd 0               ; Changed to dword for consistency
 
 temp_spawn_x  dd 0 		
 temp_spawn_y  dd 0		 
-paused db 'Paused', 0
+paused db 'PAUSED', 0
+
 
 ; ============================================================================
 ; Snake 13h VGA transition
