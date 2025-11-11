@@ -92,17 +92,10 @@ process_scancode:
     jmp .done
 
 .handle_esc:
-	cmp byte [game_running], 0
-	je .up
-    mov byte [game_running], 0
-    jmp .done
-.up:
-	dec dword [game_running]
-	jmp .done
+    xor byte [game_running], 1       ; Flip bit: 0→1 or 1→0
 .done:
     popad
     ret
-
 ; ============================================================================
 ; get_direction_delta: Get X and Y delta based on current direction
 ; Output: EAX = delta_x, EBX = delta_y
