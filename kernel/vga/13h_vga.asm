@@ -32,15 +32,10 @@ draw_snake_segment:
     
     popad
     ret
+    
 draw_apple:
     pushad
-    
-    ; BOUNDS CHECK
-    cmp eax, 40
-    jge .out_of_bounds
-    cmp ebx, 25
-    jge .out_of_bounds
-    
+
     ; Convert grid to pixels
     shl eax, 3
     shl ebx, 3
@@ -53,17 +48,6 @@ draw_apple:
     mov esi, 12
     call mode13_fill_rect
     
-    popad
-    ret
-
-.out_of_bounds:
-    ; DEBUG: Draw a white block at 0,0 if bounds error occurs
-    mov eax, 0
-    mov ebx, 0
-    mov ecx, 8
-    mov edx, 8
-    mov esi, 15
-    call mode13_fill_rect
     popad
     ret
 
@@ -83,6 +67,91 @@ erase_cell:
     
     popad
     ret
+    
+; ----------------------------------------------------------------------------
+; Input: ESI = pointer to null-terminated string !only uppercase
+;
+;        EAX = x position, EBX = y position, DL = color
+; ----------------------------------------------------------------------------
+mode13_print_string:
+    pushad
+    mov [string_x], eax
+    mov [string_y], ebx
+    mov [string_color], dl
+    mov [string_ptr], esi       ; Save string pointer
+    
+.next_char:
+    mov esi, [string_ptr]
+    lodsb
+    mov [string_ptr], esi       ; Update string pointer
+    
+    test al, al
+    jz .done
+    
+    sub al, 'A'
+    add al, 10
+    jmp .draw_it
+    
+.draw_it:
+    ; Use EDI for font pointer this time...
+    movzx edi, al
+    shl edi, 3
+    lea edi, [font_data + edi]
+    
+    xor ebp, ebp               ; Row counter
+.row_loop:
+    cmp ebp, 8
+    jge .char_done
+    
+    mov al, [edi]              ; Load row bitmap
+    inc edi
+    push eax
+    
+    xor ecx, ecx
+.col_loop:
+    cmp ecx, 8
+    jge .next_row
+    
+    mov eax, [esp]
+    mov edx, 7
+    sub edx, ecx
+    push ecx
+    mov cl, dl
+    shr eax, cl
+    pop ecx
+    
+    test al, 1
+    jz .skip_pixel
+    
+    push ecx
+    push ebp
+    mov eax, [string_x]
+    add eax, ecx
+    mov ebx, [string_y]
+    add ebx, ebp
+    mov cl, [string_color]
+    call mode13_set_pixel
+    pop ebp
+    pop ecx
+    
+.skip_pixel:
+    inc ecx
+    jmp .col_loop
+    
+.next_row:
+    pop eax
+    inc ebp
+    jmp .row_loop
+    
+.char_done:
+    add dword [string_x], 8
+    jmp .next_char
+    
+.done:
+    popad
+    ret
+
+string_ptr dd 0
 
 ; ----------------------------------------------------------------------------
 ; mode13_set_pixel: Draw single pixel
@@ -168,6 +237,43 @@ mode13_fill_rect:
     ret
 
 
+draw_border:
+    pushad
+    ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
+    ; Top border
+    mov eax, 50
+    mov ebx, 0
+    mov ecx, 270
+    mov edx, 24                ; 3 cells * 8 pixels
+    mov esi, 15                ; White
+    call mode13_fill_rect
+    
+    ; Bottom border
+    mov eax, 0
+    mov ebx, 176               ; 200 - 24
+    mov ecx, 320
+    mov edx, 24
+    mov esi, 15
+    call mode13_fill_rect
+    
+    ; Left border
+    mov eax, 0
+    mov ebx, 20
+    mov ecx, 24                ; 3 cells * 8 pixels
+    mov edx, 180
+    mov esi, 15
+    call mode13_fill_rect
+    
+    ; Right border
+    mov eax, 296               ; 320 - 24
+    mov ebx, 0
+    mov ecx, 24
+    mov edx, 200
+    mov esi, 15
+    call mode13_fill_rect
+    
+    popad
+    ret
 ; ============================================================================
 ; DATA SECTION FOR 13h VGA DRIVER
 ; ============================================================================
@@ -177,6 +283,10 @@ m13_rect_y:      dd 0
 m13_rect_width:  dd 0
 m13_rect_height: dd 0
 m13_rect_color:  dd 0
+
+string_x dd 0
+string_y dd 0
+string_color db 0
 
 init_pics:
     ; ICW1: Initialize both PICs
