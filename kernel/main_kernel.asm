@@ -271,7 +271,8 @@ display_number:
     mov edx, 10
     mov esi, 0x00
     call mode13_fill_rect
-    
+	popad
+    pushad
     ; Handle numbers 0-99
     cmp eax, 10
     jl .single_digit
