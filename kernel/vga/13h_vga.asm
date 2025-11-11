@@ -1,5 +1,5 @@
 ; ============================================================================
-; Big baller 13h VGA Mode Driver (320x200, 256 colors)
+; Mode 13h VGA Driver (320x200, 256 colors)
 ; ============================================================================
 
 ; VGA constants
@@ -32,10 +32,16 @@ draw_snake_segment:
     
     popad
     ret
-
 draw_apple:
     pushad
     
+    ; BOUNDS CHECK
+    cmp eax, 40
+    jge .out_of_bounds
+    cmp ebx, 25
+    jge .out_of_bounds
+    
+    ; Convert grid to pixels
     shl eax, 3
     shl ebx, 3
     
@@ -47,6 +53,17 @@ draw_apple:
     mov esi, 12
     call mode13_fill_rect
     
+    popad
+    ret
+
+.out_of_bounds:
+    ; DEBUG: Draw a white block at 0,0 if bounds error occurs
+    mov eax, 0
+    mov ebx, 0
+    mov ecx, 8
+    mov edx, 8
+    mov esi, 15
+    call mode13_fill_rect
     popad
     ret
 
