@@ -241,34 +241,34 @@ draw_border:
     pushad
     ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
     ; Top border
-    mov eax, 50
-    mov ebx, 0
-    mov ecx, 270
-    mov edx, 24                ; 3 cells * 8 pixels
+    mov eax, 21
+    mov ebx, 21	
+    mov ecx, 275
+    mov edx, 3                ; 3 cells * 8 pixels
     mov esi, 15                ; White
     call mode13_fill_rect
     
     ; Bottom border
-    mov eax, 0
+    mov eax, 21
     mov ebx, 176               ; 200 - 24
-    mov ecx, 320
-    mov edx, 24
+    mov ecx, 278
+    mov edx, 3
     mov esi, 15
     call mode13_fill_rect
     
     ; Left border
-    mov eax, 0
-    mov ebx, 20
-    mov ecx, 24                ; 3 cells * 8 pixels
-    mov edx, 180
+    mov eax, 21
+    mov ebx, 24
+    mov ecx, 3                
+    mov edx, 155
     mov esi, 15
     call mode13_fill_rect
     
     ; Right border
     mov eax, 296               ; 320 - 24
-    mov ebx, 0
-    mov ecx, 24
-    mov edx, 200
+    mov ebx, 21
+    mov ecx, 3
+    mov edx, 155
     mov esi, 15
     call mode13_fill_rect
     
