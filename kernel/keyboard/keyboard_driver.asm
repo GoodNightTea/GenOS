@@ -12,6 +12,7 @@ SCANCODE_LEFT       equ 0x4B
 SCANCODE_DOWN       equ 0x50
 SCANCODE_RIGHT      equ 0x4D
 SCANCODE_ESC        equ 0x01
+SCANCODE_R			equ 0x13
 
 ; Direction constants
 DIR_RIGHT           equ 0
@@ -33,11 +34,15 @@ process_scancode:
     test al, 0x80
     jnz .done                       ; Ignore key releases
     
-    ; Check for arrow keys or WASD
+    ; Check for arrow keys or WASD and R
     cmp al, SCANCODE_RIGHT
     je .set_right
     cmp al, SCANCODE_D
     je .set_right
+    
+    
+    cmp al, SCANCODE_R
+    je .triple_fault
     
     cmp al, SCANCODE_UP
     je .set_up
@@ -59,13 +64,24 @@ process_scancode:
     
     jmp .done
 
+.triple_fault:
+	xor eax, eax
+	mov [idt_desc + 2], eax  ; Set IDT base to 0x00000000
+	lidt [idt_desc]           ; Load garbage IDT
+
+	int 0x00                  ; Trigger divide by zero
+	; success >:)
+
+
+	
+
 .set_right:
     ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_LEFT
     je .done
     mov byte [current_direction], DIR_RIGHT
-    jmp .done
+	jmp .done
 
 .set_up:
     ; Prevent 180-degree turns
