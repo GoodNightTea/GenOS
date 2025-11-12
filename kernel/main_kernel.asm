@@ -62,8 +62,8 @@ kernel_entry:
     call spawn_single_apple      ; Only spawn if < 10
 
 .continue_game:
-    call calculate_length
-    call display_number
+	mov eax, [snake_len]
+	call display_number
     
     ; Calculate new head position
     mov eax, [snake_head]
@@ -97,10 +97,22 @@ kernel_entry:
 	mov ebx, 80                 ; Y position
 	mov dl, 75                  ; White color
 	call mode13_print_string
+	
+	mov esi, t3fault
+	mov eax, 100
+	mov ebx, 60
+	mov dl, 90
+	call mode13_print_string
 .pause_loop:
     hlt                              
     cmp byte [game_running], 1       
-    jne .pause_loop 
+    jne .pause_loop
+    mov eax, 130
+    mov ebx, 80
+    mov ecx, 60
+    mov edx, 8
+    mov esi, 0x00
+    call mode13_fill_rect
     jmp .game
 
 
@@ -589,8 +601,13 @@ apple_race:
 	When an apple generates the pseudorandom coordinates for the next spawnpoint, it may overlap with the snakes body
 out-of-bounds:
 	there was an oob with the apple respawn logic where I forgot that now with the 13h display I had to recalculate the width of where apples are allowed to spawn and they just spawned outside of the border and made them "despawn"
+
 second_apple_race:
 	there was ANOTHER apple race where sure I checked if there was a body but I didnt check for the potential of soon-to-be deleted tail, dont ask how, I dont understand it either but it should be gone (hopefully)
+
+direction_based_race:
+	theres a check that prevents 180 degree turns and it works, yet if one is able to turn down (or up) and then the opposite direction, one can make a 180 degree turn in one frame. Have still yet to figure out an efficient method to patch this without fucking up the fps
+	
 %endif
 ; ============================================================================
 ; Include Drivers
@@ -625,6 +642,7 @@ apple_count   dd 0               ; Changed to dword for consistency
 temp_spawn_x  dd 0 		
 temp_spawn_y  dd 0		 
 paused db 'PAUSED', 0
+t3fault db 'PRESS R FOR TRIPPLE FAULT', 0
 
 
 ; ============================================================================
