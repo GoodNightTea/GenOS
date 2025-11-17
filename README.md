@@ -6,55 +6,67 @@ It is fun building upon it, even if I cause triple faults every now and then...
 ## What this is
 - Custom bootloader chain handling 16-bit to 32-bit mode transitions
 - Interrupt-driven architecture with keyboard and timer handlers
+- Grid based collision system (inside of tetris)
 - Direct VGA framebuffer interaction
 - Memory management via circular buffers
 - Pseudo random number generation
 
-## Why snake?
+## Why?
 
-After first attempting to build a full-featured OS with filesystem support (which is insane), I pivoted to something more achievable and demonstrable that doesn't require me to sacrifice my sanity.
-
+// *After first attempting to build a full-featured OS with filesystem support (which is insane), I pivoted to something more achievable and demonstrable that doesn't require me to sacrifice my sanity.*
+Well it seems like I am going to have to face my filesystem support scare one way or another, soon...
 ## Features
 
 ### Low-Level Systems
-- **Two-stage bootloader**: BIOS boot sector → Stage 2 loader → Kernel
+- **Two-stage bootloader**: BIOS boot sector → Stage 2 loader → Protected mode kernel
 - **Protected mode operation**: Full 32-bit mode with GDT configuration
-- **Interrupt handling**: Custom IDT with PIC remapping (IRQ0: Timer, IRQ1: Keyboard)
-- **Hardware timer**: PIT configured for 60Hz frame timing with HLT-based CPU efficiency
-- **Keyboard driver**: PS/2 scancode processing with direction state machine
+- **Interrupt handling**: Custom IDT with 256 entries, PIC remapping (IRQ0: Timer, IRQ1: Keyboard)
+- **Hardware timer**: PIT configured at ~18.2Hz with HLT-based power management
+- **Keyboard driver**: PS/2 scancode processing with press/release detection
+- **VGA Mode 13h**: 320×200 resolution, 256-color palette with the most beautiful font ever created
 
-### Game Implementation  
-- **VGA text mode driver**: Direct writes to 0xB8000 framebuffer
+### Snake Implementation (work in progress)
 - **Circular queue**: Ring buffer for snake segments (up to 100 length)
 - **Collision detection**: Optimized X-then-Y early-exit checking
+- **Apple Management System**: Advanced multi-stage extremely complex fast insane quantum apple tracker (very complex)
 - **Pseudo-random generation**: XorShift32 algorithm for apple spawning
 - **Frame-based timing**: Interrupt-driven game loop with directional speed compensation
+  
+### Tetris Implementation (work in progress)
+- **Grid system**: 10×19 playfield (columns 0-9, rows 0-18)
+- **Collision detection**: 190-byte 2D array tracking occupied cells
+- **Index-based movement**: Keyboard input controls grid indices, not raw pixels like in snake
+- **Block placement**: Automatic grid registration when blocks land
+- **Line detection**: Checks for completed rows (10 filled cells)
+- **Race condition feature**: Can slide blocks at the bottom (idk if I should keep or remove it, classic tetris got it as well sooo idk o.0)
+
 ```
 ## Architecture 
 
 ┌─────────────────┐
-│  Boot Sector    │  512 bytes, loads Stage 2
-│  (Sector 0)     │  
+│   Boot Sector   │  512 bytes, loads Stage 2
+│   (Sector 0)    │  
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│  Stage 2        │  Enables A20, sets up GDT,
-│  (Sector 1)     │  transitions to protected mode
+│     Stage 2     │  Enables A20, sets up GDT,
+│   (Sector 1)    │  transitions to protected mode
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│  Kernel         │  Sets up IDT, initializes PIC/PIT,
-│  (Sectors 2-9)  │  runs game loop
+│     Kernel      │  Sets up IDT, initializes PIC/PIT,
+│   (8KB @ 1MB)   │  runs game loop
 └─────────────────┘
 ```
 ### Memory Layout
 
 0x00000000  - Real mode IVT
+0x00007000  - Stack 8kb allocated
 0x00007C00  - Boot sector loads here
 0x00001000  - Stage 2 loads here  
-0x00100000  - Kernel (1MB mark)
-0x00110000  - IDT location
-0x000B8000  - VGA text buffer
+0x00100000  - Kernel 1MB mark, expanded to 8KB
+0x00110000  - IDT (256 entries × 8 bytes)
+0x000A0000  - VGA framebuffer
 
 
 ## Build Instructions
@@ -78,15 +90,33 @@ python3 tools/genfs_v2_builder.py build/boot.bin build/images/genos.img build/st
 
 qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
 
+
 ## Controls
 
+### Menu
 | Key | Action |
 |-----|--------|
-| **W / ↑** | Move Up |
-| **A / ←** | Move Left |
-| **S / ↓** | Move Down |
-| **D / →** | Move Right |
-| **ESC** | Pause Game |
+| **1** | Play Snake |
+| **2** | Play Tetris |
+| **ESC** | Exit to Menu |
+
+### Snake
+| Key | Action |
+|-----|--------|
+| **W** | Move Up |
+| **A** | Move Left |
+| **S** | Move Down |
+| **D** | Move Right |
+| **SPACE** | Pause/Resume |
+| **ESC** | Return to Menu |
+
+### Tetris
+| Key | Action |
+|-----|--------|
+| **A** | Move Left |
+| **D** | Move Right |
+| **SPACE** | Pause/Resume |
+| **ESC** | Return to Menu |
 
 ## Project Structure
 ```
@@ -97,32 +127,28 @@ qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
 │   └── second/
 │       └── stage2.asm            # Protected mode transition
 ├── kernel/
-│   ├── main_kernel.asm           # Game loop and system init
+│   ├── main_kernel.asm           # System Init + Game Selection + (conditional) Snake Game loop 
+│   ├── tetris.asm                # System Init + Tetris game loop 
 │   ├── keyboard/
 │   │   └── keyboard_driver.asm   # Scancode processing
 │   ├── timer/
 │   │   └── timer_driver.asm      # PIT configuration
+│   ├── fonts/
+│   │   └── font1.asm             # The most beautiful fon ever
 │   └── vga/
-│       └── min_snake_vga.asm     # Framebuffer driver
+│       └── 13h_vga.asm           # VGA driver
 └── tools/
     └── genfs_v2_builder.py       # Disk image builder
 ```
 ## Issues
-
+### Snake:
 - **Max snake length**: 100 segments before circular buffer wraparound
-- **Resolution**: 80×25 characters, could make it 13h
 - **No self-collision**: Snake can pass through itself (feature, enjoy it)
 - **Single-threaded**: No multitasking or process management 
-
-## Ideas
-
-Todos:
-- [ ] VGA Mode 13h (320×200 pixel graphics)
-- [ ] PC speaker sound effects
-- [ ] Self-collision detection
-- [ ] High score persistence (filesystem integration)
-- [ ] Multiple game modes (Tetris, Pong)
-- [ ] Borders and aesthetics
+- **Race-Conditions**: Rotation issue and potential apple collision/spawning issue (unconfirmed)
+### Tetris:
+- **Race-Condition**: One can move the Block at hud bottom but sure lets keep it
+- **Lacking Implementation**: I still have to implement like everything inside the HUD that will get displayed
 
 ## Contact
 **Discord**: GoodNightTea
