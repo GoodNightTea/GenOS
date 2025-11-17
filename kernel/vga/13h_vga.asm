@@ -275,6 +275,108 @@ draw_border:
     popad
     ret
 ; ============================================================================
+; Tetris assets
+; ============================================================================
+draw_hud:
+    pushad
+    
+    ; Main play area border (10 blocks wide × 20 blocks tall)
+    ; Using 8-pixel blocks = 80×160 pixel play area
+    ; Centered-ish on screen (320×200)
+    
+    ; Left border (3 pixels thick)
+    mov eax, 117              ; Start X (leaves room on left)
+    mov ebx, 18               ; Start Y (leaves room at top)
+    mov ecx, 3                ; Width
+    mov edx, 156              ; Height (20 blocks × 8 + borders)
+    mov esi, 15               ; White
+    call mode13_fill_rect
+    
+    ; Right border
+    mov eax, 200              ; 117 + 3 + 80 (play area)
+    mov ebx, 18
+    mov ecx, 3
+    mov edx, 156
+    mov esi, 15
+    call mode13_fill_rect
+    
+    ; Top border
+    mov eax, 117
+    mov ebx, 17
+    mov ecx, 86             ; 3 + 80 + 3
+    mov edx, 3
+    mov esi, 15
+    call mode13_fill_rect
+    
+    ; Bottom border
+    mov eax, 117
+    mov ebx, 172              ; 18 + 3 + 160 (play area)
+    mov ecx, 86
+    mov edx, 3
+    mov esi, 15
+    call mode13_fill_rect
+    
+    ; Score label (top left)
+    mov esi, score_text       ; "SCORE"
+    mov eax, 10
+    mov ebx, 30
+    mov dl, 15
+    call mode13_print_string
+    
+    ; Lines label
+    mov esi, lines_text       ; "LINES"
+    mov eax, 10
+    mov ebx, 50
+    mov dl, 15
+    call mode13_print_string
+    
+    ; Level label
+    mov esi, level_text       ; "LEVEL"
+    mov eax, 10
+    mov ebx, 70
+    mov dl, 15
+    call mode13_print_string
+    
+    ; Next piece label (right side)
+    mov esi, next_text        ; "NEXT"
+    mov eax, 220
+    mov ebx, 30
+    mov dl, 15
+    call mode13_print_string
+    
+    ; Next piece preview box
+    mov eax, 215
+    mov ebx, 45
+    mov ecx, 50
+    mov edx, 50
+    mov esi, 15
+    call mode13_fill_rect
+    
+    popad
+    ret
+
+
+
+draw_block:
+    ; Input: EAX = x, EBX = y
+    pushad
+    mov ecx, 8
+    mov edx, 8
+    mov esi, 90
+    call mode13_fill_rect
+    popad
+    ret
+
+erase_block:
+    ; Input: EAX = x, EBX = y
+    pushad
+    mov ecx, 8
+    mov edx, 8
+    mov esi, 0
+    call mode13_fill_rect
+    popad
+    ret
+; ============================================================================
 ; DATA SECTION FOR 13h VGA DRIVER
 ; ============================================================================
 
@@ -287,6 +389,10 @@ m13_rect_color:  dd 0
 string_x dd 0
 string_y dd 0
 string_color db 0
+score_text db 'SCORE', 0
+lines_text db 'LINES', 0
+level_text db 'LEVEL', 0
+next_text  db 'NEXT', 0
 
 init_pics:
     ; ICW1: Initialize both PICs
