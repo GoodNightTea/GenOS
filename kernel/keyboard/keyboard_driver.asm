@@ -3,6 +3,11 @@
 ; ============================================================================
 
 ; Scancode definitions (make codes - when key is pressed)
+SCANCODE_1          equ 0x02
+SCANCODE_2          equ 0x03
+SCANCODE_3          equ 0x04
+SCANCODE_4          equ 0x05
+
 SCANCODE_W          equ 0x11
 SCANCODE_A          equ 0x1E
 SCANCODE_S          equ 0x1F
@@ -40,6 +45,10 @@ process_scancode:
     cmp al, SCANCODE_D
     je .set_right
     
+    cmp al, SCANCODE_1
+    je .menu_choice_1
+    cmp al, SCANCODE_2
+    je .menu_choice_2
     
     cmp al, SCANCODE_R
     je .triple_fault
@@ -63,7 +72,43 @@ process_scancode:
     je .handle_esc
     
     jmp .done
+.menu_choice_1:
+    mov byte [menu_choice], 1
+    jmp .done
+    
+.menu_choice_2:
+	xor byte [is_tetris], 1
+    mov byte [menu_choice], 2
+    jmp .done
+.tetris_w:
+	jmp .done
+	
+.tetris_a:
+    cmp dword [current_x_index], 0
+    je .done                ; Already at left edge
+    dec dword [current_x_index]
+    
+    mov eax, [current_x_index]
+    imul eax, 8
+    add eax, 120
+    mov [current_piece_x], eax
+    jmp .done
 
+
+.tetris_d:
+    cmp dword [current_x_index], 9
+    jge .done                
+	inc dword [current_x_index]
+	mov eax, [current_x_index]
+	imul eax, 8
+	add eax, 120
+	mov [current_piece_x], eax
+    jmp .done
+
+.tetris_s:
+
+    jmp .done
+	
 .triple_fault:
 	xor eax, eax
 	mov [idt_desc + 2], eax  ; Set IDT base to 0x00000000
@@ -73,9 +118,9 @@ process_scancode:
 	; success >:)
 
 
-	
-
 .set_right:
+	cmp byte [is_tetris], 1
+	je .tetris_d
     ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_LEFT
@@ -84,6 +129,8 @@ process_scancode:
 	jmp .done
 
 .set_up:
+	cmp byte [is_tetris], 1
+	je .tetris_w
     ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_DOWN
@@ -92,6 +139,8 @@ process_scancode:
     jmp .done
 
 .set_left:
+	cmp byte [is_tetris], 1
+	je .tetris_a
     ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_RIGHT
@@ -100,6 +149,8 @@ process_scancode:
     jmp .done
 
 .set_down:
+	cmp byte [is_tetris], 1
+	je .tetris_s
     ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_UP
@@ -162,3 +213,5 @@ get_direction_delta:
 current_direction   db DIR_RIGHT        ; Starting direction
 last_scancode       db 0                ; For debugging
 game_running        db 1                ; Game state flag
+menu_choice 		db 0
+is_tetris			db 0				; check if its tetris or nah
