@@ -10,13 +10,43 @@ kernel_entry:
     call init_pics
     call init_timer
     sti
+    mov al, 0
+    call mode13_clear_screen
     
+    mov esi, menu
+    mov eax, 130
+    mov ebx, 80
+    mov dl, 100
+    call mode13_print_string
+    
+    mov byte [menu_choice], 0
+
+.wait_for_choice:
+    hlt                              ; Wait for keyboard interrupt
+    mov al, [menu_choice]            ; Check what user pressed
+    cmp al, 1
+    je .snake
+    cmp al, 2
+    je .tetris
+    jmp .wait_for_choice             ; Keep waiting if 0
+    
+.snake:
+    mov al, 0
+    call mode13_clear_screen
+    mov esi, snake
+    mov eax, 130
+    mov ebx, 5
+    mov dl, 100
+    call mode13_print_string
+	jmp .snake_continue   
+.tetris:
+    call tetris_setup
+    
+.snake_continue:
     ; Setup palette colors
     call setup_snake_palette
     
     ; Clear screen to black
-    mov al, 0
-    call mode13_clear_screen
     call draw_border
 
     
@@ -617,6 +647,7 @@ direction_based_race:
 %include "vga/13h_vga.asm"
 %include "keyboard/keyboard_driver.asm"
 %include "timer/timer_driver.asm"
+%include "kernel/tetris.asm"
 
 ; ============================================================================
 ; Data Section
@@ -641,10 +672,10 @@ apple_count   dd 0               ; Changed to dword for consistency
 
 temp_spawn_x  dd 0 		
 temp_spawn_y  dd 0		 
-paused db 'PAUSED', 0
-t3fault db 'PRESS R FOR TRIPPLE FAULT', 0
-
-
+paused 	      db 'PAUSED', 0
+t3fault 		  db 'PRESS R FOR TRIPPLE FAULT', 0
+menu			  db 'SNAKE OR TETRIS', 0
+snake			  db 'SNAKE', 0
 ; ============================================================================
 ; Snake 13h VGA transition
 ; ============================================================================
