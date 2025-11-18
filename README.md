@@ -2,6 +2,10 @@
 # GenOS
 A minimalist OS (depends what you classify as an OS) built from scratch as a graduation project, it's not the best but I like it. 
 It is fun building upon it, even if I cause triple faults every now and then... 
+### Tetris
+<img width="642" height="390" alt="image" src="https://github.com/user-attachments/assets/3896338b-ce55-4927-9a46-ed050fb7cbfa" />
+### Snake
+<img width="642" height="390" alt="image" src="https://github.com/user-attachments/assets/1cd8dff8-d5d8-4233-bdec-9e0fde70757d" />
 
 ## What this is
 - Custom bootloader chain handling 16-bit to 32-bit mode transitions
@@ -37,7 +41,7 @@ Well it seems like I am going to have to face my filesystem support scare one wa
 - **Collision detection**: 190-byte 2D array tracking occupied cells
 - **Index-based movement**: Keyboard input controls grid indices, not raw pixels like in snake
 - **Block placement**: Automatic grid registration when blocks land
-- **Line detection**: Checks for completed rows (10 filled cells)
+- **Array Manipulation**: Checks for completed x-indices and there is one, it shifts the y indice down by one and clear the upper artifact
 - **Race condition feature**: Can slide blocks at the bottom (idk if I should keep or remove it, classic tetris got it as well sooo idk o.0)
 
 ```
@@ -115,6 +119,7 @@ qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
 |-----|--------|
 | **A** | Move Left |
 | **D** | Move Right |
+| **S** | Clear Line |              // DEBUG
 | **SPACE** | Pause/Resume |
 | **ESC** | Return to Menu |
 
@@ -147,8 +152,9 @@ qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
 - **Single-threaded**: No multitasking or process management 
 - **Race-Conditions**: Rotation issue and potential apple collision/spawning issue (unconfirmed)
 ### Tetris:
-- **Race-Condition**: One can move the Block at hud bottom but sure lets keep it
-- **Lacking Implementation**: I still have to implement like everything inside the HUD that will get displayed
+- **Lacking Implementation 1**: I still have to implement like everything inside the HUD that will get displayed
+- **Lacking Implementation 2**: More than just an 8x8 block
+
 
 ## Contact
 **Discord**: GoodNightTea
