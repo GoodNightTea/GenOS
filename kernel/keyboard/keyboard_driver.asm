@@ -11,6 +11,7 @@ SCANCODE_4          equ 0x05
 SCANCODE_W          equ 0x11
 SCANCODE_A          equ 0x1E
 SCANCODE_S          equ 0x1F
+SCANCODE_S_RELEASE  equ 0x9F
 SCANCODE_D          equ 0x20
 SCANCODE_UP         equ 0x48
 SCANCODE_LEFT       equ 0x4B
@@ -34,10 +35,11 @@ process_scancode:
     
     ; Store scancode for debugging
     mov [last_scancode], al
-    
+    cmp byte [is_tetris], 1
+    je .tetris_input
     ; Check if it's a break code (key release - bit 7 set)
     test al, 0x80
-    jnz .done                       ; Ignore key releases
+    jnz .done
     
     ; Check for arrow keys or WASD and R
     cmp al, SCANCODE_RIGHT
@@ -63,8 +65,6 @@ process_scancode:
     cmp al, SCANCODE_A
     je .set_left
     
-    cmp al, SCANCODE_DOWN
-    je .set_down
     cmp al, SCANCODE_S
     je .set_down
     
@@ -72,14 +72,41 @@ process_scancode:
     je .handle_esc
     
     jmp .done
-.menu_choice_1:
-    mov byte [menu_choice], 1
-    jmp .done
     
-.menu_choice_2:
-	xor byte [is_tetris], 1
-    mov byte [menu_choice], 2
+
+.tetris_input:	
+    cmp al, SCANCODE_S
+    je .tetris_s_press
+    cmp al, SCANCODE_S_RELEASE
+    je .tetris_s_release
+    cmp al, SCANCODE_W
+    je .tetris_w
+    cmp al, SCANCODE_A
+    je .tetris_a
+    cmp al, SCANCODE_D
+    je .tetris_d
+    
     jmp .done
+ 
+.tetris_s_press:
+    cmp byte [s_pressed], 1    
+    je .done           			
+    mov byte [s_pressed], 1
+    sub dword [speed], 4        
+    jmp .done
+
+.tetris_s_release:
+    cmp byte [s_pressed], 0  
+    je .done_released
+    mov byte [s_pressed], 0
+    add dword [speed], 4      
+    
+    jmp .done
+.done_released:
+    mov al, 0x20
+    out 0x20, al
+    popad
+    iret
 .tetris_w:
 	jmp .done
 	
@@ -103,11 +130,17 @@ process_scancode:
 	imul eax, 8
 	add eax, 120
 	mov [current_piece_x], eax
+    
+    jmp .done
+.menu_choice_1:
+    mov byte [menu_choice], 1
+    jmp .done
+    
+.menu_choice_2:
+	xor byte [is_tetris], 1
+    mov byte [menu_choice], 2
     jmp .done
 
-.tetris_s:
-
-    jmp .done
 	
 .triple_fault:
 	xor eax, eax
@@ -119,8 +152,6 @@ process_scancode:
 
 
 .set_right:
-	cmp byte [is_tetris], 1
-	je .tetris_d
     ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_LEFT
@@ -129,8 +160,7 @@ process_scancode:
 	jmp .done
 
 .set_up:
-	cmp byte [is_tetris], 1
-	je .tetris_w
+
     ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_DOWN
@@ -139,8 +169,7 @@ process_scancode:
     jmp .done
 
 .set_left:
-	cmp byte [is_tetris], 1
-	je .tetris_a
+
     ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_RIGHT
@@ -149,8 +178,7 @@ process_scancode:
     jmp .done
 
 .set_down:
-	cmp byte [is_tetris], 1
-	je .tetris_s
+
     ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_UP
@@ -161,6 +189,7 @@ process_scancode:
 .handle_esc:
     xor byte [game_running], 1       ; Flip bit: 0→1 or 1→0
 .done:
+
     popad
     ret
 ; ============================================================================
@@ -215,3 +244,4 @@ last_scancode       db 0                ; For debugging
 game_running        db 1                ; Game state flag
 menu_choice 		db 0
 is_tetris			db 0				; check if its tetris or nah
+s_pressed 			db 0
