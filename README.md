@@ -4,6 +4,7 @@ A minimalist OS (depends what you classify as an OS) built from scratch as a gra
 It is fun building upon it, even if I cause triple faults every now and then... 
 ### Tetris
 <img width="642" height="390" alt="image" src="https://github.com/user-attachments/assets/3896338b-ce55-4927-9a46-ed050fb7cbfa" />
+
 ### Snake
 <img width="642" height="390" alt="image" src="https://github.com/user-attachments/assets/1cd8dff8-d5d8-4233-bdec-9e0fde70757d" />
 
