@@ -2,6 +2,55 @@
 # GenOS
 A minimalist OS (depends what you classify as an OS) built from scratch as a graduation project, it's not the best but I like it. 
 It is fun building upon it, even if I cause triple faults every now and then... 
+
+## Build Instructions
+
+### Prerequisites 
+```
+sudo apt install nasm qemu-system-x86
+```
+### Compile
+```
+nasm -f bin boot/first/boot.asm -o build/boot.bin
+nasm -f bin boot/second/stage2.asm -o build/stage2.bin
+mkdir -p build/images
+nasm -f bin -I kernel/ kernel/main_kernel.asm -o build/kernel.bin
+python3 tools/genfs_v2_builder.py build/boot.bin build/images/genos.img build/stage2.bin build/kernel.bin
+```
+### Use
+**In Qemu:**
+qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
+
+## Controls
+
+### Menu
+| Key | Action |
+|-----|--------|
+| **1** | Play Snake |
+| **2** | Play Tetris |
+| **ESC** | Exit to Menu |
+
+### Snake
+| Key | Action |
+|-----|--------|
+| **W** | Move Up |
+| **A** | Move Left |
+| **S** | Move Down |
+| **D** | Move Right |
+| **SPACE** | Pause/Resume |
+| **ESC** | Return to Menu |
+| **R** | Triple fault |
+
+### Tetris
+| Key | Action |
+|-----|--------|
+| **A** | Move Left |
+| **D** | Move Right |
+| **S** | Clear Line |              // DEBUG
+| **SPACE** | Pause/Resume |
+| **ESC** | Return to Menu |
+| **R** | Triple fault |
+#### Fyi: the triple fault is intentional, use case is when I need to reset 
 ### Tetris
 <img width="642" height="390" alt="image" src="https://github.com/user-attachments/assets/3896338b-ce55-4927-9a46-ed050fb7cbfa" />
 
@@ -74,55 +123,7 @@ Well it seems like I am going to have to face my filesystem support scare one wa
 0x000A0000  - VGA framebuffer
 
 
-## Build Instructions
 
-### Prerequisites 
-```
-sudo apt install nasm qemu-system-x86
-```
-### Compile
-```
-nasm -f bin boot/first/boot.asm -o build/boot.bin
-nasm -f bin boot/second/stage2.asm -o build/stage2.bin
-mkdir -p build/images
-nasm -f bin -I kernel/ kernel/main_kernel.asm -o build/kernel.bin
-; and then you can all format them together to make it bootable
-python3 tools/genfs_v2_builder.py build/boot.bin build/images/genos.img build/stage2.bin build/kernel.bin
-
-```
-### Use
-**In Qemu:**
-
-qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
-
-
-## Controls
-
-### Menu
-| Key | Action |
-|-----|--------|
-| **1** | Play Snake |
-| **2** | Play Tetris |
-| **ESC** | Exit to Menu |
-
-### Snake
-| Key | Action |
-|-----|--------|
-| **W** | Move Up |
-| **A** | Move Left |
-| **S** | Move Down |
-| **D** | Move Right |
-| **SPACE** | Pause/Resume |
-| **ESC** | Return to Menu |
-
-### Tetris
-| Key | Action |
-|-----|--------|
-| **A** | Move Left |
-| **D** | Move Right |
-| **S** | Clear Line |              // DEBUG
-| **SPACE** | Pause/Resume |
-| **ESC** | Return to Menu |
 
 ## Project Structure
 ```
