@@ -235,7 +235,7 @@ mode13_fill_rect:
 .done:
     popad
     ret
-
+    
 
 draw_border:
     pushad
@@ -277,6 +277,85 @@ draw_border:
 ; ============================================================================
 ; Tetris assets
 ; ============================================================================
+
+clear_playfield:
+	pushad
+    ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
+    mov eax, 120
+    mov ebx, 20
+    mov ecx, 80
+    mov edx, 152
+    mov esi, 0
+    call mode13_fill_rect
+    popad
+    ret
+    
+redraw_dropped:
+    pushad
+    
+    xor esi, esi              ; y index (0-18)
+    
+.row_loop:
+    xor edi, edi              ; x index (0-9)
+    
+.col_loop:
+    ; Calculate grid offset: (y * 10) + x
+    mov eax, esi
+    imul eax, 10
+    add eax, edi
+    
+    ; check if cell full
+    cmp byte [tetris_grid + eax], 0
+    je .skip_cell             ; empty like bank acc :(
+    
+    ; index full, convert
+    ; x pixel = 120 + (x_index * 8)
+    mov eax, edi
+    imul eax, 8
+    add eax, 120
+    
+    ; y pixel = 20 + (y_index * 8)
+    mov ebx, esi
+    imul ebx, 8
+    add ebx, 20
+    
+    ; Draw the block
+    push esi
+    push edi
+    call draw_block           
+    pop edi
+    pop esi
+    
+.skip_cell:
+    inc edi
+    cmp edi, 10               ; done with this row?
+    jl .col_loop
+    
+    inc esi
+    cmp esi, 19               ; done with all rows?
+    jl .row_loop
+    
+    popad
+    ret
+    
+extermish_line:
+	pushad
+	call refresh_index
+	mov eax, 120
+	; Calculate Y coord from CURRENT index
+    mov ebx, [current_y_index] 
+	imul ebx, 8
+	add ebx, 20
+.clear_line_y:
+	mov ecx, 80
+	mov edx, 8
+	mov esi, 0
+	call mode13_fill_rect
+	popad
+	ret
+	
+
+
 draw_hud:
     pushad
     
@@ -289,7 +368,7 @@ draw_hud:
     mov ebx, 18               ; Start Y (leaves room at top)
     mov ecx, 3                ; Width
     mov edx, 156              ; Height (20 blocks × 8 + borders)
-    mov esi, 15               ; White
+    mov esi, 13               ; White
     call mode13_fill_rect
     
     ; Right border
@@ -297,7 +376,7 @@ draw_hud:
     mov ebx, 18
     mov ecx, 3
     mov edx, 156
-    mov esi, 15
+    mov esi, 13
     call mode13_fill_rect
     
     ; Top border
@@ -305,18 +384,19 @@ draw_hud:
     mov ebx, 17
     mov ecx, 86             ; 3 + 80 + 3
     mov edx, 3
-    mov esi, 15
+    mov esi, 13
     call mode13_fill_rect
     
     ; Bottom border
     mov eax, 117
-    mov ebx, 172              ; 18 + 3 + 160 (play area)
+    mov ebx, 172              ; trial and error idk how i got this number (play area)
     mov ecx, 86
     mov edx, 3
-    mov esi, 15
+    mov esi, 13
     call mode13_fill_rect
     
     ; Score label (top left)
+    ; needs implementation
     mov esi, score_text       ; "SCORE"
     mov eax, 10
     mov ebx, 30
@@ -324,6 +404,7 @@ draw_hud:
     call mode13_print_string
     
     ; Lines label
+    ; needs implementation
     mov esi, lines_text       ; "LINES"
     mov eax, 10
     mov ebx, 50
@@ -331,6 +412,7 @@ draw_hud:
     call mode13_print_string
     
     ; Level label
+    ; needs implementation
     mov esi, level_text       ; "LEVEL"
     mov eax, 10
     mov ebx, 70
@@ -345,6 +427,7 @@ draw_hud:
     call mode13_print_string
     
     ; Next piece preview box
+    ; needs implementation
     mov eax, 215
     mov ebx, 45
     mov ecx, 50
@@ -358,13 +441,22 @@ draw_hud:
 
 
 draw_block:
-    ; Input: EAX = x, EBX = y
+	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
+    ; imma do the same visual trick with snake cause it looks good
+    ; uuh wait im cooking
     pushad
     mov ecx, 8
     mov edx, 8
-    mov esi, 90
+    mov esi, 15
     call mode13_fill_rect
-    popad
+    add eax, 1
+    add ebx, 1
+    mov ecx, 6
+    mov edx, 6
+    mov esi, 0
+    call mode13_fill_rect
+
+	popad
     ret
 
 erase_block:
