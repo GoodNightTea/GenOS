@@ -22,7 +22,7 @@ tetris_setup:
     cmp byte [game_running], 0
     je .paused
     
-    mov eax, 6
+    mov eax, dword [speed]
     call wait_frames
     
     ; Erase old position
@@ -242,3 +242,4 @@ current_piece_y    dd 0
 current_piece_x    dd 0
 last_drawn_x    dd 160
 last_drawn_y    dd 22
+speed			   dd 6
