@@ -16,24 +16,7 @@ tetris_setup:
     mov dword [current_x_index], 4
     mov dword [current_y_index], 0
     jmp .block_loop
-.paused:
-    mov esi, paused         	 ; Point to string
-	mov eax, 130                 ; X position
-	mov ebx, 80                	 ; Y position
-	mov dl, 75                  ; White color
-	call mode13_print_string
-	
-.pause_loop:
-    hlt                              
-    cmp byte [game_running], 1       
-    jne .pause_loop
-    mov eax, 130
-    mov ebx, 80
-    mov ecx, 60
-    mov edx, 8
-    mov esi, 0x00
-    call mode13_fill_rect
-    jmp .game
+
     
  .block_loop:
     cmp byte [game_running], 0
@@ -42,60 +25,61 @@ tetris_setup:
     mov eax, 6
     call wait_frames
     
-
+    ; Erase old position
     mov eax, [last_drawn_x]
     mov ebx, [last_drawn_y]
     call erase_block
     
-
+	call refresh_index
+	
+    ; CHECK COLLISION BEFORE MVING
+    mov eax, [current_y_index]
+    inc eax                     
+    cmp eax, 19                  ; no more rows?
+    jge .bottom_block            ; Hit floor
+    
+    ; Check at (x_index, y_index+1)
+    imul eax, 10
+    add eax, [current_x_index]
+    cmp byte [tetris_grid + eax], 0
+    jne .bottom_block         
+    
+    ; Safe to move 
     mov eax, [current_piece_x]
     mov ebx, [current_piece_y]
-    
-
     add ebx, 8
-    
-    ; Check if would hit bottom
-    cmp ebx, 172              ; Would go past 164
-    jge .bottom_block
-    
-    ; Update position
     mov [current_piece_y], ebx
     mov [last_drawn_x], eax
     mov [last_drawn_y], ebx
+
     
     ; Draw at new position
     call draw_block
-    
     jmp .block_loop
+    
 
+    
 .bottom_block:
-    ; Draw at CURRENT valid position (before inc of next index)
     mov eax, [current_piece_x]
     mov ebx, [current_piece_y]
     call draw_block
     
-    ; Calculate Y index from CURRENT position
-    mov eax, [current_piece_y]
-    sub eax, 20
-    xor edx, edx
-    mov ecx, 8
-    div ecx              ; eax = y_index (0-18)
+    call refresh_index
     
-    ; Get X index
+    ; Get indices
+    mov eax, [current_y_index]
     mov ebx, [current_x_index]
-	    
-	; Save Y index for line check
-	mov dword [current_y_index], eax
-	
-    ; Calculate offset: y_index * 10 + x_index
+    
+    ; STORE FIRST OMG
+    push eax
+    push ebx
     imul eax, 10
     add eax, ebx
-    
-    ; Mark as filled
     mov byte [tetris_grid + eax], 1
+    pop ebx
+    pop eax
     
-    ; Check line 
-    mov eax, dword [current_y_index]
+
     call check_line_complete
     
     jmp .next_block
@@ -110,50 +94,145 @@ tetris_setup:
     add eax, 120
     mov [current_piece_x], eax
     
-    mov dword [current_piece_y], 20		; Set Y to top   
+    mov dword [current_piece_y], 20	
     
-   				 						; Initialize last_drawn to same position
+
     mov [last_drawn_x], eax
     mov dword [last_drawn_y], 20
     
-    ; Draw first block
     mov eax, [current_piece_x]
     mov ebx, [current_piece_y]
     call draw_block
+
     
     jmp .block_loop
 
-check_line_complete:
-    mov eax, dword [current_y_index]
-    push eax             ; idk if its necessary but i dont wanna loose it
+.paused:
+	pushad						 ; probable register corruption if I dont push/pop for some reason...
+    mov esi, paused         	 ; Point to string
+	mov eax, 130                 ; X position
+	mov ebx, 80                	 ; Y position
+	mov dl, 75                  ; White color
+	call mode13_print_string
+	
+.pause_loop:
+    hlt                              
+    cmp byte [game_running], 1
+    jne .pause_loop
+    mov eax, 130
+    mov ebx, 80
+    mov ecx, 60
+    mov edx, 8
+    mov esi, 0x00
+    call mode13_fill_rect
+    popad
+    jmp .game
     
-    imul eax, 10         ; Start of row
-    mov ecx, 10          ; Check 10 columns
+refresh_index:
+	pushad	
+
+    mov eax, [current_piece_x]
+    sub eax, 120			 ; offset from playfield top
+    xor edx, edx
+    mov ecx, 8
+    div ecx
+    mov [current_x_index], eax
+
+    mov eax, [current_piece_y]
+    sub eax, 20              ; offset from playfield top
+    xor edx, edx
+    mov ecx, 8
+    div ecx                  ; eax = actual y index from where block is drawn
+    mov [current_y_index], eax
+    popad
+    ret
+
+check_line_complete:
+	push eax
+    imul eax, 10         
+    mov ecx, 10          
     lea edi, [tetris_grid + eax]
     
 .check_loop:
     cmp byte [edi], 0
-    je .not_complete     ; Found empty cell
+    je .not_complete     ; empty index
     inc edi
     dec ecx
     jnz .check_loop
     
-    ; Line is complete!
-    mov esi, line_sniffed
-    mov eax, 130
-    mov ebx, 80
-    mov dl, 100
-    call mode13_print_string
-    pop eax
-    ret
+	pop eax
+    mov [current_y_index], eax
+    call extermish_line
+	call forget_and_drop
+	call clear_playfield
+	call redraw_dropped
+	ret
     
 .not_complete:
     pop eax
     ret
 
 
+; Input: eax = y index of cleared line
+forget_and_drop:
+    pushad
+    
+    ; First, clear the line
+    push eax
+    imul eax, 10
+    mov ecx, 10
+    lea edi, [tetris_grid + eax]
+.clear_loop:
+    mov byte [edi], 0
+    inc edi
+    dec ecx
+    jnz .clear_loop
+    pop eax                   ; eax = cleared y index
+    
+    ; shift all rows above down
+    mov esi, eax              ; start from cleared
+    
+.shift_rows:
+    test esi, esi             ; If esi = 0, we at da top
+    jz .done
+    
+    
+    mov eax, esi
+    dec eax                   
+    imul eax, 10
+    lea edi, [tetris_grid + eax]  
+    
+    mov eax, esi
+    imul eax, 10
+    lea ebx, [tetris_grid + eax]  ; Dest
+    
+    mov ecx, 10
+.copy_loop:
+    mov al, [edi]
+    mov [ebx], al
+    inc edi
+    inc ebx
+    dec ecx
+    jnz .copy_loop
+    
+    dec esi
+    jmp .shift_rows
+    
+.done:
+	lea edi, [tetris_grid]
+    mov ecx, 10
+    xor al, al
+.clear_top:
+    mov [edi], al
+    inc edi
+    dec ecx
+    jnz .clear_top
+    
+    popad
+    ret
     
 ; REMINDER: when we use 0-x dont forget the 0 as a value as well, no more off-by-1 bugs!!
+; dont trust the incrementor...
 ;variables
 tetris_grid: times 190 db 0  ; 19 rows (0-18) × 10 columns
 
@@ -163,4 +242,3 @@ current_piece_y    dd 0
 current_piece_x    dd 0
 last_drawn_x    dd 160
 last_drawn_y    dd 22
-line_sniffed			  db 'YEA', 0
