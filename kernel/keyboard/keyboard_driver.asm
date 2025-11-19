@@ -85,6 +85,10 @@ process_scancode:
     je .tetris_a
     cmp al, SCANCODE_D
     je .tetris_d
+    cmp al, SCANCODE_R
+    je .triple_fault
+    cmp al, SCANCODE_ESC
+    je .handle_esc
     
     jmp .done
  
@@ -111,27 +115,62 @@ process_scancode:
 	jmp .done
 	
 .tetris_a:
+    call refresh_index
     cmp dword [current_x_index], 0
-    je .done                ; Already at left edge
-    dec dword [current_x_index]
+    jle .done                ; Already at left edge
     
-    mov eax, [current_x_index]
-    imul eax, 8
-    add eax, 120
-    mov [current_piece_x], eax
+    ; Check top-left: (x-1, y)
+    mov eax, [current_y_index]
+    imul eax, 20
+    mov ebx, [current_x_index]
+    dec ebx                         ; x - 1
+    add eax, ebx
+    cmp byte [tetris_grid + eax], 0
+    jne .done
+    
+    ; Check bottom-left: (x-1, y+1)
+    mov eax, [current_y_index]
+    inc eax                         ; y + 1
+    imul eax, 20
+    mov ebx, [current_x_index]
+    dec ebx                         ; x - 1
+    add eax, ebx
+    cmp byte [tetris_grid + eax], 0
+    jne .done
+    
+    ; Safe to move left
+    sub dword [current_piece_x], 8
     jmp .done
-
 
 .tetris_d:
-    cmp dword [current_x_index], 9
-    jge .done                
-	inc dword [current_x_index]
-	mov eax, [current_x_index]
-	imul eax, 8
-	add eax, 120
-	mov [current_piece_x], eax
+    call refresh_index
+    cmp dword [current_x_index], 18  ; 20 - 2 = 18 (since block is 2 wide)
+    jge .done
     
+    ; Check top-right: (x+2, y)
+    mov eax, [current_y_index]
+    imul eax, 20
+    mov ebx, [current_x_index]
+    add ebx, 2                      ; x + 2 (one past the block's right edge)
+    add eax, ebx
+    cmp byte [tetris_grid + eax], 0
+    jne .done
+    
+    ; Check bottom-right: (x+2, y+1)
+    mov eax, [current_y_index]
+    inc eax                         ; y + 1
+    imul eax, 20
+    mov ebx, [current_x_index]
+    add ebx, 2
+    add eax, ebx
+    cmp byte [tetris_grid + eax], 0
+    jne .done
+    
+    ; Safe to move right
+    add dword [current_piece_x], 8
     jmp .done
+	
+	
 .menu_choice_1:
     mov byte [menu_choice], 1
     jmp .done
