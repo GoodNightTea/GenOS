@@ -173,13 +173,13 @@ font_data:
     db 0b00000000
 
     ; Character 'I'
-    db 0b11111111
+    db 0b01111110
     db 0b00010000
     db 0b00010000
     db 0b00010000
     db 0b00010000
     db 0b00010000
-    db 0b11111111
+    db 0b01111110
     db 0b00000000
 
     ; Character 'J'
@@ -193,10 +193,10 @@ font_data:
     db 0b00000000
 
     ; Character 'K'
-    db 0b10100000
-    db 0b10100000
-    db 0b11000000
-    db 0b10100000
+    db 0b10000100
+    db 0b10001000
+    db 0b10010000
+    db 0b11100000
     db 0b10010000
     db 0b10001000
     db 0b10001000
@@ -231,13 +231,13 @@ font_data:
     db 0b10000110
     db 0b00000000
     ; Character 'O'
-    db 0b00111100
-    db 0b01000010
-    db 0b10000001
-    db 0b10000001
-    db 0b10000001
-    db 0b01000010
-    db 0b00111100
+    db 0b00111000
+    db 0b01000100
+    db 0b10000010
+    db 0b10000010
+    db 0b10000010
+    db 0b01000100
+    db 0b00111000
     db 0b00000000
     ; Character 'L'
     db 0b11111000
@@ -259,26 +259,26 @@ font_data:
     db 0b00000010
     ; Character 'R'
     db 0b11111100
-    db 0b11000010
+    db 0b10000010
     db 0b10000010
     db 0b11111100
     db 0b10000010
-    db 0b10001010
+    db 0b10000010
     db 0b10000010
     db 0b00000000
     ; Character 'S'
-    db 0b01111100
-    db 0b10000000
+    db 0b00111100
+    db 0b01000010
     db 0b01000000
-    db 0b00111000
-    db 0b00000110
+    db 0b00111100
+    db 0b00000010
     db 0b00000010
     db 0b00111100
     db 0b00000000
 
     ; Character 'T'
     db 0b11111111
-    db 0b10010001
+    db 0b00010000
     db 0b00010000
     db 0b00010000
     db 0b00010000
@@ -341,7 +341,16 @@ font_data:
     db 0b01000000
     db 0b11111111
     db 0b00000000
-
+    ; Character ' '
+    db 0b00000000
+    db 0b00000000
+    db 0b00000000
+    db 0b00000000
+    db 0b00000000
+    db 0b00000000
+    db 0b00000000
+    db 0b00000000
+    
 draw_char:
     ; EAX = x, EBX = y, CL = ASCII char, DL = color
     pushad
@@ -408,7 +417,41 @@ draw_char:
     popad
     ret
 
+; Convert dword in EAX to decimal string
+; Output: ESI points to null-terminated string
+int_to_string:
+    pushad
+    mov edi, int_buffer + 10    ; Start at end of buffer
+    mov byte [edi], 0           ; Null terminator
+    dec edi
+    
+    mov ebx, 10                 ; Divisor
+    test eax, eax
+    jnz .convert
+    
+    ; Handle zero
+    mov byte [edi], '0'
+    mov [int_result], edi
+    popad
+    ret
+    
+.convert:
+    xor edx, edx
+    div ebx                     ; eax = quotient, edx = remainder
+    add dl, '0'                 ; Convert to ASCII
+    mov [edi], dl
+    dec edi
+    test eax, eax
+    jnz .convert
+    
+    inc edi                     ; Point to first digit
+    mov [int_result], edi
+    popad
+    mov esi, [int_result]
+    ret
 
+int_buffer: times 11 db 0       ; Max 10 digits + null
+int_result: dd 0
 char_x:     dd 0
 char_y:     dd 0
 char_color: db 0
