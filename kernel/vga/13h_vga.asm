@@ -78,32 +78,59 @@ mode13_print_string:
     mov [string_x], eax
     mov [string_y], ebx
     mov [string_color], dl
-    mov [string_ptr], esi       ; Save string pointer
+    mov [string_ptr], esi
     
 .next_char:
     mov esi, [string_ptr]
     lodsb
-    mov [string_ptr], esi       ; Update string pointer
+    mov [string_ptr], esi
     
     test al, al
     jz .done
     
-    sub al, 'A'
+    ; Convert ASCII to font index
+    cmp al, '0'
+    jb .check_space
+    cmp al, '9'
+    jbe .is_digit
+    cmp al, 'A'
+    jb .check_space
+    cmp al, 'Z'
+    jbe .is_letter
+    cmp al, 'a'                 ; Support lowercase too
+    jb .check_space
+    cmp al, 'z'
+    ja .check_space
+    sub al, 'a'
     add al, 10
     jmp .draw_it
     
+.is_digit:
+    sub al, '0'                 ; '0'-'9' → 0-9
+    jmp .draw_it
+    
+.is_letter:
+    sub al, 'A'                 ; 'A'-'Z' → 0-25
+    add al, 10                  ; Offset by 10 (after digits)
+    jmp .draw_it
+    
+.check_space:
+    cmp al, ' '
+    jne .skip_char              ; Unknown character, skip
+    mov al, 36                  ; Space is at index 36
+    jmp .draw_it
+    
 .draw_it:
-    ; Use EDI for font pointer this time...
     movzx edi, al
     shl edi, 3
     lea edi, [font_data + edi]
     
-    xor ebp, ebp               ; Row counter
+    xor ebp, ebp
 .row_loop:
     cmp ebp, 8
     jge .char_done
     
-    mov al, [edi]              ; Load row bitmap
+    mov al, [edi]
     inc edi
     push eax
     
@@ -145,6 +172,10 @@ mode13_print_string:
     
 .char_done:
     add dword [string_x], 8
+    jmp .next_char
+
+.skip_char:
+    add dword [string_x], 8     ; Still advance for spacing
     jmp .next_char
     
 .done:
@@ -210,7 +241,6 @@ mode13_fill_rect:
 .row_loop:
     cmp edi, [m13_rect_height]
     jge .done
-    
     ; Calculate row start: (y + row) * 320 + x
     mov eax, [m13_rect_y]
     add eax, edi
@@ -235,8 +265,53 @@ mode13_fill_rect:
 .done:
     popad
     ret
-    
 
+; ----------------------------------------------------------------------------
+; mode13_rgb_rect: Draw filled rectangle with changing color per pixel
+; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = starting color
+; ----------------------------------------------------------------------------
+
+mode13_rgb_rect:
+    pushad
+    
+    mov [m13_rect_x], eax
+    mov [m13_rect_y], ebx
+    mov [m13_rect_width], ecx
+    mov [m13_rect_height], edx
+    
+    xor edi, edi               ; Row counter
+.row_loop:
+    cmp edi, [m13_rect_height]
+    jge .done
+    add dword [m13_rect_color], 1 
+    ; Calculate row start: (y + row) * 320 + x
+    mov eax, [m13_rect_y]
+    add eax, edi
+    imul eax, MODE13_WIDTH
+    add eax, [m13_rect_x]
+    
+    push edi
+    mov edi, MODE13_BUFFER
+    add edi, eax
+    
+    ; Fill row
+    mov ecx, [m13_rect_width]
+    mov al, byte [m13_rect_color]
+.col_loop:
+    stosb
+    loop .col_loop
+    
+    pop edi
+    inc edi
+    jmp .row_loop
+    
+.done:
+    popad
+    ret
+; ----------------------------------------------------------------------------
+; draw_border: Draws snake border
+; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = starting color
+; ----------------------------------------------------------------------------
 draw_border:
     pushad
     ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
@@ -281,10 +356,10 @@ draw_border:
 clear_playfield:
 	pushad
     ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
-    mov eax, 120
-    mov ebx, 20
-    mov ecx, 80
-    mov edx, 152
+    mov eax, 123
+    mov ebx, 17
+    mov ecx, 86
+    mov edx, 158
     mov esi, 0
     call mode13_fill_rect
     popad
@@ -301,54 +376,55 @@ redraw_dropped:
 .col_loop:
     ; Calculate grid offset: (y * 10) + x
     mov eax, esi
-    imul eax, 10
+    imul eax, 20
     add eax, edi
     
     ; check if cell full
     cmp byte [tetris_grid + eax], 0
-    je .skip_cell             ; empty like bank acc :(
+    je .skip_cell             ; empty like bankacc
     
     ; index full, convert
     ; x pixel = 120 + (x_index * 8)
     mov eax, edi
-    imul eax, 8
+    imul eax, 4
     add eax, 120
     
     ; y pixel = 20 + (y_index * 8)
     mov ebx, esi
-    imul ebx, 8
+    imul ebx, 4
     add ebx, 20
     
-    ; Draw the block
+    ; Draw the index
     push esi
     push edi
-    call draw_block           
+    call draw_index           
     pop edi
     pop esi
     
 .skip_cell:
     inc edi
-    cmp edi, 10               ; done with this row?
+    cmp edi, 20               ; done with this row?
     jl .col_loop
     
     inc esi
-    cmp esi, 19               ; done with all rows?
+    cmp esi, 38               ; done with all rows?
     jl .row_loop
     
     popad
     ret
-    
+
+
 extermish_line:
 	pushad
 	call refresh_index
 	mov eax, 120
 	; Calculate Y coord from CURRENT index
     mov ebx, [current_y_index] 
-	imul ebx, 8
+	imul ebx, 4
 	add ebx, 20
 .clear_line_y:
 	mov ecx, 80
-	mov edx, 8
+	mov edx, 4
 	mov esi, 0
 	call mode13_fill_rect
 	popad
@@ -358,7 +434,7 @@ extermish_line:
 
 draw_hud:
     pushad
-    
+
     ; Main play area border (10 blocks wide × 20 blocks tall)
     ; Using 8-pixel blocks = 80×160 pixel play area
     ; Centered-ish on screen (320×200)
@@ -367,36 +443,34 @@ draw_hud:
     mov eax, 117              ; Start X (leaves room on left)
     mov ebx, 18               ; Start Y (leaves room at top)
     mov ecx, 3                ; Width
+    mov esi, 15
     mov edx, 156              ; Height (20 blocks × 8 + borders)
-    mov esi, 13               ; White
+
     call mode13_fill_rect
-    
     ; Right border
     mov eax, 200              ; 117 + 3 + 80 (play area)
     mov ebx, 18
     mov ecx, 3
+    mov esi, 15
     mov edx, 156
-    mov esi, 13
+
     call mode13_fill_rect
-    
+	
     ; Top border
     mov eax, 117
     mov ebx, 17
     mov ecx, 86             ; 3 + 80 + 3
     mov edx, 3
-    mov esi, 13
+    mov esi, 15
     call mode13_fill_rect
-    
     ; Bottom border
     mov eax, 117
-    mov ebx, 172              ; trial and error idk how i got this number (play area)
+    mov ebx, 172              ; 18 + 3 + 160 (play area)
     mov ecx, 86
     mov edx, 3
-    mov esi, 13
+    mov esi, 15
     call mode13_fill_rect
-    
     ; Score label (top left)
-    ; needs implementation
     mov esi, score_text       ; "SCORE"
     mov eax, 10
     mov ebx, 30
@@ -404,7 +478,6 @@ draw_hud:
     call mode13_print_string
     
     ; Lines label
-    ; needs implementation
     mov esi, lines_text       ; "LINES"
     mov eax, 10
     mov ebx, 50
@@ -412,7 +485,6 @@ draw_hud:
     call mode13_print_string
     
     ; Level label
-    ; needs implementation
     mov esi, level_text       ; "LEVEL"
     mov eax, 10
     mov ebx, 70
@@ -427,38 +499,128 @@ draw_hud:
     call mode13_print_string
     
     ; Next piece preview box
-    ; needs implementation
     mov eax, 215
     mov ebx, 45
     mov ecx, 50
     mov edx, 50
-    mov esi, 15
-    call mode13_fill_rect
+    call mode13_rgb_rect
     
     popad
     ret
 
 
-
+    
+draw_index:
+    pushad
+    mov ecx, 4
+    mov edx, 4
+    mov esi, 15
+    call mode13_fill_rect
+    add eax, 1
+    add ebx, 1
+    mov ecx, 2
+    mov edx, 2
+    mov esi, 0
+    call mode13_fill_rect
+	popad
+    ret
+    
 draw_block:
 	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
     ; imma do the same visual trick with snake cause it looks good
     ; uuh wait im cooking
     pushad
-    mov ecx, 8
-    mov edx, 8
+    mov ecx, 4
+    mov edx, 4
     mov esi, 15
     call mode13_fill_rect
     add eax, 1
     add ebx, 1
-    mov ecx, 6
-    mov edx, 6
+    mov ecx, 2
+    mov edx, 2
+    mov esi, 0
+    call mode13_fill_rect
+    add eax, 3
+    sub ebx, 1
+    mov ecx, 4
+    mov edx, 4
+    mov esi, 15
+    call mode13_fill_rect
+    add eax, 1
+    add ebx, 1
+    mov ecx, 2
+    mov edx, 2
+    mov esi, 0
+    call mode13_fill_rect
+    
+    sub eax, 5
+    add ebx, 3
+    mov ecx, 4
+    mov edx, 4
+    mov esi, 15
+    call mode13_fill_rect
+    add eax, 1
+    add ebx, 1
+    mov ecx, 2
+    mov edx, 2
+    mov esi, 0
+    call mode13_fill_rect
+    add eax, 3
+    sub ebx, 1
+    mov ecx, 4
+    mov edx, 4
+    mov esi, 15
+    call mode13_fill_rect
+    add eax, 1
+    add ebx, 1
+    mov ecx, 2
+    mov edx, 2
+    mov esi, 0
+    call mode13_fill_rect
+	popad
+    ret
+    
+L_shape_r0:
+    db 0,0,1,0
+    db 0,0,1,0
+    db 0,0,1,1
+    db 0,0,0,0
+
+current_shape db SHAPE_L
+SHAPE_L equ 0
+
+draw_L:
+	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
+
+    pushad
+    mov ecx, 4
+    mov edx, 16
+    mov esi, 15
+    call mode13_fill_rect
+    add ebx, 12
+    mov ecx, 8
+    mov edx, 4
+    mov esi, 15
+    call mode13_fill_rect
+
+	popad
+    ret
+exterminate_L:
+	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
+
+    pushad
+    mov ecx, 4
+    mov edx, 16
+    mov esi, 0
+    call mode13_fill_rect
+    add ebx, 12
+    mov ecx, 8
+    mov edx, 4
     mov esi, 0
     call mode13_fill_rect
 
 	popad
     ret
-
 erase_block:
     ; Input: EAX = x, EBX = y
     pushad
