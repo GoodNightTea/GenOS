@@ -51,6 +51,8 @@ process_scancode:
     je .menu_choice_1
     cmp al, SCANCODE_2
     je .menu_choice_2
+    cmp al, SCANCODE_3
+    je .menu_choice_3
     
     cmp al, SCANCODE_R
     je .triple_fault
@@ -179,7 +181,9 @@ process_scancode:
 	xor byte [is_tetris], 1
     mov byte [menu_choice], 2
     jmp .done
-
+.menu_choice_3:
+    mov byte [menu_choice], 3
+    jmp .done
 	
 .triple_fault:
 	xor eax, eax
