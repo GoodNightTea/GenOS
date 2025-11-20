@@ -4,6 +4,7 @@ tetris_setup:
     call draw_hud
     
     mov esp, 0x7000
+	
     
 .game:
     cmp byte [game_running], 0
@@ -11,11 +12,8 @@ tetris_setup:
     mov dword [color], 10 
     mov eax, 5
     call wait_frames
-
-    mov dword [current_piece_y], 20
-    mov dword [current_piece_x], 160
-    mov dword [current_x_index], 10
-    mov dword [current_y_index], 0
+    
+    call spawn_next_piece    ; ← Just call, don't reset next_shape_type
     jmp .block_loop
 
     
@@ -92,37 +90,19 @@ tetris_setup:
     mov eax, [last_drawn_x]
     mov ebx, [last_drawn_y]
     call erase_block
-    
+    call exterminate_L
 	call refresh_index
 	
-    ; CHECK COLLISION BEFORE MVING
+    
     mov eax, [current_y_index]
-	add eax, 2
-    cmp eax, 37                  ; no more rows?
-    jge .bottom_block            ; Hit floor
-	; Block: (x, y), (x-1, y), (x, y+1), (x-1, y+1)
-	; row below: (x, y+2), (x-1, y+2)
+    add eax, 3                  ; Check row below the cube
+    cmp eax, 38                 ; Past bottom?
+    jge .bottom_block
+    
+    call check_bottom_collision
+	cmp eax, 0
+	jne .bottom_block
 
-	; Check bottom-left: (x, y+2)
-	mov eax, [current_y_index]
-	add eax, 2                      ; y + 2 (one block below)
-	imul eax, 20                    
-	add eax, [current_x_index]      
-	cmp byte [tetris_grid + eax], 0
-	jne .bottom_block   
-	
-	; Check bottom-left: (x+1, y+2)
-	mov eax, [current_y_index]
-	add eax, 2                      ; y + 2
-	imul eax, 20                    
-	mov ebx, [current_x_index]
-	inc ebx                         ; x + 1
-	add eax, ebx                    ; Combine: (y+2)*20 + (x+1)
-	cmp byte [tetris_grid + eax], 0
-	jne .bottom_block       
-	
-
-	
     ; Safe to move 
     mov eax, [current_piece_x]
     mov ebx, [current_piece_y]
@@ -131,86 +111,87 @@ tetris_setup:
     mov [last_drawn_x], eax
     mov [last_drawn_y], ebx
 
-    
+    mov eax, [current_piece_x]
+    mov ebx, [current_piece_y]
     ; Draw at new position
-    call draw_block
+    call draw_current_piece
     jmp .block_loop
     
 
     
 .bottom_block:
-    call draw_hud
     mov eax, [current_piece_x]
     mov ebx, [current_piece_y]
-    call draw_block
+    call draw_current_piece
     
     call refresh_index
-    ; Store all 4 cells of the 2×2 block
-	mov eax, [current_y_index]
-	mov ebx, [current_x_index]
-
-	; Top-left: (x, y)
-	push eax
-	push ebx
-	imul eax, 20
-	add eax, ebx
-	mov byte [tetris_grid + eax], 1
-	pop ebx
-	pop eax
-
-	; Top-right: (x+1, y)
-	push eax
-	push ebx
-	imul eax, 20
-	inc ebx
-	add eax, ebx
-	mov byte [tetris_grid + eax], 1
-	pop ebx
-	pop eax
-
-	; Bottom-left: (x, y+1)
-	push eax
-	push ebx
-	inc eax
-	imul eax, 20
-	add eax, ebx
-	mov byte [tetris_grid + eax], 1
-	pop ebx
-	pop eax
-
-	; Bottom-right: (x+1, y+1)
-	inc eax
-	imul eax, 20
-	inc ebx
-	add eax, ebx
-	mov byte [tetris_grid + eax], 1
     
-	; storage is (x, y), (x+1, y), (x, y+1), (x+1, y+1) at the top left corner
+    call get_current_shape      ; ESI = bitmask pointer
+    
+    ; Iterate through bitmask and store occupied cells
+    xor ecx, ecx                ; row counter
+
+.row_loop:
+    cmp ecx, 4
+    jge .locked
+    
+    xor edx, edx                ; col counter
+
+.col_loop:
+    cmp edx, 4
+    jge .next_row
+    
+    ; Calculate bitmask offset
+    push ecx
+    push edx
+    
+    mov edi, ecx
+    shl edi, 2                  ; row * 4
+    add edi, edx                ; + col
+    
+    cmp byte [esi + edi], 0
+    pop edx
+    pop ecx
+    je .next_col                ; Skip empty cells
+    
+    ; This cell is occupied - store to grid
+    ; Grid position = (current_x_index + col, current_y_index + row)
+    
+    mov eax, [current_y_index]
+    mov ebx, [current_x_index]
+    
+    add eax, ecx                ; y_index + row offset
+    add ebx, edx                ; x_index + col offset
+    
+    ; Store using your old pattern
+    push eax
+    push ebx
+    imul eax, 20
+    add eax, ebx
+    mov byte [tetris_grid + eax], 1
+    pop ebx
+    pop eax
+
+.next_col:
+    inc edx
+    jmp .col_loop
+
+.next_row:
+    inc ecx
+    jmp .row_loop
+
+.locked:
     call check_line_complete
     
     jmp .next_block
 
 .next_block:
     call draw_hud
-    ; Reset grid index to center
-    mov dword [current_x_index], 10
-    
-    ; Calculate pixel position from index
-    mov eax, 10
-    imul eax, 4
-    add eax, 120
-    mov [current_piece_x], eax
-    
-    mov dword [current_piece_y], 20	
-    
-
-    mov [last_drawn_x], eax
-    mov dword [last_drawn_y], 20
+    call spawn_next_piece          ; ← Just this one line!
     
     mov eax, [current_piece_x]
     mov ebx, [current_piece_y]
-    call draw_block
-
+    call draw_current_piece
     
     jmp .block_loop
 
@@ -258,6 +239,79 @@ refresh_index:
     mov [current_y_index], eax
     popad
     ret
+check_bottom_collision:
+    ; Returns: EAX = 0 if safe to move down, 1 if collision
+    pushad
+    
+    call get_current_shape      ; ESI = bitmask
+    
+    ; Find the lowest occupied row for each column
+    ; Then check if moving down would collide
+    
+    xor ecx, ecx                ; row counter
+    mov byte [collision_found], 0
+    
+.row_loop:
+    cmp ecx, 4
+    jge .check_done
+    
+    xor edx, edx                ; col counter
+    
+.col_loop:
+    cmp edx, 4
+    jge .next_row
+    
+    ; Check if this cell occupied
+    push ecx
+    push edx
+    
+    mov edi, ecx
+    shl edi, 2
+    add edi, edx
+    
+    cmp byte [esi + edi], 0
+    pop edx
+    pop ecx
+    je .next_col
+    
+    ; This cell is occupied - check cell below it
+    mov eax, [current_y_index]
+    add eax, ecx                ; Current cell row
+    inc eax                     ; Row below
+    
+    ; Floor check
+    cmp eax, 38
+    jge .collision_detected
+    
+    mov ebx, [current_x_index]
+    add ebx, edx                ; Current cell col
+    
+    ; Check grid
+    push ecx
+    push edx
+    imul eax, 20
+    add eax, ebx
+    cmp byte [tetris_grid + eax], 0
+    pop edx
+    pop ecx
+    jne .collision_detected
+    
+.next_col:
+    inc edx
+    jmp .col_loop
+    
+.next_row:
+    inc ecx
+    jmp .row_loop
+    
+.collision_detected:
+    mov byte [collision_found], 1
+    
+.check_done:
+    popad
+    movzx eax, byte [collision_found]
+    ret
+
 
 check_line_complete:
     mov esi, 37              ; Start from bottom row
@@ -297,9 +351,43 @@ check_line_complete:
     jmp .check_row
     
 .done:
-
     ret
 
+
+spawn_next_piece:
+    ; Set current piece to the queued piece
+    mov al, [next_shape_type]
+    mov [current_shape_type], al
+    mov byte [current_rotation], 0
+    
+    ; Reset position to top center
+    mov dword [current_x_index], 10
+    mov dword [current_y_index], 0
+    
+    ; Calculate pixel position
+    mov eax, 10
+    imul eax, 4
+    add eax, 120
+    mov [current_piece_x], eax
+    mov dword [current_piece_y], 20
+    
+    mov [last_drawn_x], eax
+    mov dword [last_drawn_y], 20
+    
+    ; Pick next piece based on what we JUST spawned
+    mov al, [current_shape_type]     ; ← Check current, not next
+    cmp al, SHAPE_CUBE
+    je .queue_L_next
+    
+    ; Just spawned L, queue cube next
+    mov byte [next_shape_type], SHAPE_CUBE
+    ret
+    
+.queue_L_next:
+    ; Just spawned cube, queue L next
+    mov byte [next_shape_type], SHAPE_L
+    ret
+    
 ; Input: eax = y index of cleared line
 forget_and_drop:
     pushad
@@ -375,4 +463,6 @@ last_drawn_y	   dd 22
 score			   dd 0
 speed			   dd 6
 color dd 0
+next_shape_type db SHAPE_CUBE    ; What piece will spawn next
 
+collision_found db 0
