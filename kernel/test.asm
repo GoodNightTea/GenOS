@@ -1,0 +1,40 @@
+test:
+    mov esp, 0x7000
+.display:
+	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
+	cmp dword [countd], 21
+	je .next_row
+	mov eax, dword [x]
+	mov ebx, dword [y]
+	mov ecx, 15
+	mov edx, 15
+	mov esi, dword [colord]
+	call mode13_fill_rect
+	mov eax, 2
+	call wait_frames
+	inc dword [countd]
+	inc dword [colord]
+	add dword [x], 15
+	jmp .display
+.next_row:
+	
+	mov dword [x], 0
+	add dword [y], 15
+	mov dword [countd], 0
+	inc dword [rowd]
+	cmp dword [rowd], 12
+	jge .hlt
+	jmp .display
+
+.hlt:
+	sti
+	hlt
+	mov eax, 1000
+	call wait_frames
+	jmp .hlt
+
+x 		dd 0
+y 		dd 0
+colord   dd 0
+countd  dd 0
+rowd 	dd 0
