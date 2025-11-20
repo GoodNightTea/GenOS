@@ -141,7 +141,8 @@ process_scancode:
     jne .done
     
     ; Safe to move left
-    sub dword [current_piece_x], 8
+    sub dword [current_piece_x], 4
+    dec dword [current_x_index]
     jmp .done
 
 .tetris_d:
@@ -169,7 +170,8 @@ process_scancode:
     jne .done
     
     ; Safe to move right
-    add dword [current_piece_x], 8
+    add dword [current_piece_x], 4
+    inc dword [current_x_index]
     jmp .done
 	
 	
@@ -182,6 +184,7 @@ process_scancode:
     mov byte [menu_choice], 2
     jmp .done
 .menu_choice_3:
+	;xor byte [is_tetris], 1
     mov byte [menu_choice], 3
     jmp .done
 	
