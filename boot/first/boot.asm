@@ -21,11 +21,11 @@ start:
     call read_sectors
 
     
-    ; Load kernel (8 sectors for 4KB)
+    ; Load kernel (32 sectors for 16KB)
 
     mov ax, 3               ; Kernel starts at sector 3  
     mov bx, 0x2000          ; Load to 0x2000 (temporary)
-    mov cx, 8               ; Read 8 sectors (4KB)
+    mov cx, 32               ; Read 32 sectors (16KB)
     call read_sectors
 
     
