@@ -356,8 +356,8 @@ draw_border:
 clear_playfield:
 	pushad
     ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
-    mov eax, 123
-    mov ebx, 17
+    mov eax, 120
+    mov ebx, 20
     mov ecx, 86
     mov edx, 158
     mov esi, 0
@@ -425,7 +425,7 @@ extermish_line:
 .clear_line_y:
 	mov ecx, 80
 	mov edx, 4
-	mov esi, 0
+	mov esi, 15
 	call mode13_fill_rect
 	popad
 	ret
@@ -448,7 +448,7 @@ draw_hud:
 
     call mode13_fill_rect
     ; Right border
-    mov eax, 200              ; 117 + 3 + 80 (play area)
+    mov eax, 201              ; 117 + 3 + 80 (play area)
     mov ebx, 18
     mov ecx, 3
     mov esi, 15
@@ -459,14 +459,14 @@ draw_hud:
     ; Top border
     mov eax, 117
     mov ebx, 17
-    mov ecx, 86             ; 3 + 80 + 3
+    mov ecx, 87             ; 3 + 80 + 3 + 1 spacing
     mov edx, 3
     mov esi, 15
     call mode13_fill_rect
     ; Bottom border
     mov eax, 117
-    mov ebx, 172              ; 18 + 3 + 160 (play area)
-    mov ecx, 86
+    mov ebx, 173              ; 18 + 3 + 160 (play area)
+    mov ecx, 87
     mov edx, 3
     mov esi, 15
     call mode13_fill_rect
@@ -477,19 +477,6 @@ draw_hud:
     mov dl, 15
     call mode13_print_string
     
-    ; Lines label
-    mov esi, lines_text       ; "LINES"
-    mov eax, 10
-    mov ebx, 50
-    mov dl, 15
-    call mode13_print_string
-    
-    ; Level label
-    mov esi, level_text       ; "LEVEL"
-    mov eax, 10
-    mov ebx, 70
-    mov dl, 15
-    call mode13_print_string
     
     ; Next piece label (right side)
     mov esi, next_text        ; "NEXT"
@@ -503,24 +490,29 @@ draw_hud:
     mov ebx, 45
     mov ecx, 50
     mov edx, 50
-    call mode13_rgb_rect
-    
+    call mode13_fill_rect
+    mov eax, 218
+    mov ebx, 48
+    mov ecx, 44
+    mov edx, 44
+    mov esi, 0
+    call mode13_fill_rect
+	
+	mov eax, 237
+	mov ebx, 60
+	call draw_L
+	
     popad
     ret
 
 
-    
 draw_index:
     pushad
-    mov ecx, 4
-    mov edx, 4
-    mov esi, 15
-    call mode13_fill_rect
-    add eax, 1
     add ebx, 1
-    mov ecx, 2
-    mov edx, 2
-    mov esi, 0
+    add eax, 1
+    mov ecx, 3
+    mov edx, 3
+    mov esi, 2
     call mode13_fill_rect
 	popad
     ret
@@ -530,53 +522,33 @@ draw_block:
     ; imma do the same visual trick with snake cause it looks good
     ; uuh wait im cooking
     pushad
-    mov ecx, 4
-    mov edx, 4
-    mov esi, 15
-    call mode13_fill_rect
     add eax, 1
     add ebx, 1
-    mov ecx, 2
-    mov edx, 2
-    mov esi, 0
-    call mode13_fill_rect
-    add eax, 3
-    sub ebx, 1
-    mov ecx, 4
-    mov edx, 4
-    mov esi, 15
-    call mode13_fill_rect
-    add eax, 1
-    add ebx, 1
-    mov ecx, 2
-    mov edx, 2
-    mov esi, 0
+    mov ecx, 3
+    mov edx, 3
+    mov esi, 2
     call mode13_fill_rect
     
-    sub eax, 5
-    add ebx, 3
-    mov ecx, 4
-    mov edx, 4
-    mov esi, 15
+    add eax, 4
+    mov ecx, 3
+    mov edx, 3
+    mov esi, 2
     call mode13_fill_rect
-    add eax, 1
-    add ebx, 1
-    mov ecx, 2
-    mov edx, 2
-    mov esi, 0
+  
+    
+    sub eax, 4
+    add ebx, 4
+    mov ecx, 3
+    mov edx, 3
+    mov esi, 2
     call mode13_fill_rect
-    add eax, 3
-    sub ebx, 1
-    mov ecx, 4
-    mov edx, 4
-    mov esi, 15
+ 
+    add eax, 4
+    mov ecx, 3
+    mov edx, 3
+    mov esi, 2
     call mode13_fill_rect
-    add eax, 1
-    add ebx, 1
-    mov ecx, 2
-    mov edx, 2
-    mov esi, 0
-    call mode13_fill_rect
+  
 	popad
     ret
     
