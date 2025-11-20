@@ -11,11 +11,7 @@ tetris_setup:
     mov dword [color], 10 
     mov eax, 5
     call wait_frames
-	pushad
-	mov eax, 20
-	mov ebx, 100
-	call draw_L
-	popad
+
     mov dword [current_piece_y], 20
     mov dword [current_piece_x], 160
     mov dword [current_x_index], 10
@@ -76,7 +72,20 @@ tetris_setup:
 	call mode13_print_string
     popad
     
+    mov eax, 300
+	mov ebx, 46
+    mov ecx, 16
+    mov edx, 8
+    mov esi, 0x00
+    call mode13_fill_rect
     mov eax, dword [speed]
+    call int_to_string
+    mov esi, dword [int_result]
+	mov eax, 300
+	mov ebx, 46
+	mov dl, 0x0F
+	call mode13_print_string
+	mov eax, dword [speed]
     call wait_frames
     
     ; Erase old position
@@ -271,7 +280,7 @@ check_line_complete:
     jnz .check_loop
     
     ; Row is full! Clear it
-    inc dword [score]
+    inc dword [score]		; not sure what is causing it, but we are rowing through this section twice as intended...
     mov [current_y_index], esi
     call extermish_line
     mov eax, esi              ; Pass y_index in EAX
@@ -288,6 +297,7 @@ check_line_complete:
     jmp .check_row
     
 .done:
+
     ret
 
 ; Input: eax = y index of cleared line
