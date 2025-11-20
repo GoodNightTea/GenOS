@@ -9,6 +9,8 @@ my smart ass said I wont need to change boot or stage2 anymore cause we got ever
 this came to bite me in the ass after wanting to switch to 13h VGA. 
 I questioned why tf it keeps crashing, until I searched out and found out that switching VGA state is done in the bios...
 yea here we are yipee
+and again we gotta ugrade to 8kb...
+okay that was fast, we are back at it and Imma just upgrade to 16kb cause damn this is annoying
 %endif
 [BITS 16]
 [ORG 0x1000]
@@ -54,7 +56,7 @@ protected_mode_start:
     ; Destination: 0x100000 (1MB - standard kernel location)
     mov esi, 0x2000         ; Source address
     mov edi, 0x100000       ; Destination address  
-    mov ecx, 1024           ; Copy 4096 bytes (1024 dwords) to match 4KB kernel
+    mov ecx, 4096           ; Copy 16384 bytes (4096 dwords) to match 16KB kernel
     rep movsd               ; Copy kernel
     
     ; Jump to kernel entry point
