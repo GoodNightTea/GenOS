@@ -28,8 +28,12 @@ kernel_entry:
     je .snake
     cmp al, 2
     je .tetris
+    cmp al, 3
+    je .test
     jmp .wait_for_choice             ; Keep waiting if 0
-    
+.test:
+	call test
+	jmp .test	
 .snake:
     mov al, 0
     call mode13_clear_screen
@@ -648,6 +652,7 @@ direction_based_race:
 %include "keyboard/keyboard_driver.asm"
 %include "timer/timer_driver.asm"
 %include "kernel/tetris.asm"
+%include "kernel/test.asm"
 
 ; ============================================================================
 ; Data Section
