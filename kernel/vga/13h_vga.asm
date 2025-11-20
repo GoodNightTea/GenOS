@@ -352,7 +352,81 @@ draw_border:
 ; ============================================================================
 ; Tetris assets
 ; ============================================================================
+draw_block_index:
+    pushad
+    add eax, 1
+    mov ecx, 3
+    mov edx, 3
+    mov esi, 2
+    call mode13_fill_rect
+	popad
+    ret
+    
 
+    
+draw_current_piece:
+    ; Draws current piece at current_piece_x/y using current shape
+    pushad
+    
+    call get_current_shape   ; ESI = bitmask
+    
+
+    ; Iterate through 4x4 bitmask
+    xor ecx, ecx            ; row
+    
+.row_loop:
+    cmp ecx, 4
+    jge .done
+    
+    xor edx, edx            ; col
+    
+.col_loop:
+    cmp edx, 4
+    jge .next_row
+    
+    ; Check if cell occupied
+    mov edi, ecx
+    shl edi, 2
+    add edi, edx
+    
+    cmp byte [esi + edi], 0
+    je .next_col
+    
+    ; Draw this cell
+    push eax
+    push ebx
+    push ecx
+    push edx
+    
+    ; Calculate pixel position
+    mov eax, [current_piece_x]
+    push edx
+    shl edx, 2              ; col * 4 pixels
+    add eax, edx
+    pop edx
+    
+    mov ebx, [current_piece_y]
+    push ecx
+    shl ecx, 2              ; row * 4 pixels
+    add ebx, ecx
+    pop ecx
+	call draw_l_index
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    
+.next_col:
+    inc edx
+    jmp .col_loop
+    
+.next_row:
+    inc ecx
+    jmp .row_loop
+.done:
+    popad
+
+    ret
 clear_playfield:
 	pushad
     ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
@@ -367,11 +441,10 @@ clear_playfield:
     
 redraw_dropped:
     pushad
-    
-    xor esi, esi              ; y index (0-18)
+    xor esi, esi              
     
 .row_loop:
-    xor edi, edi              ; x index (0-9)
+    xor edi, edi             
     
 .col_loop:
     ; Calculate grid offset: (y * 10) + x
@@ -384,12 +457,12 @@ redraw_dropped:
     je .skip_cell             ; empty like bankacc
     
     ; index full, convert
-    ; x pixel = 120 + (x_index * 8)
+    ; x pixel = 120 + (x_index * 4)
     mov eax, edi
     imul eax, 4
     add eax, 120
     
-    ; y pixel = 20 + (y_index * 8)
+    ; y pixel = 20 + (y_index * 4)
     mov ebx, esi
     imul ebx, 4
     add ebx, 20
@@ -397,7 +470,7 @@ redraw_dropped:
     ; Draw the index
     push esi
     push edi
-    call draw_index           
+    call draw_block_index           
     pop edi
     pop esi
     
@@ -505,75 +578,89 @@ draw_hud:
     popad
     ret
 
+get_current_shape:
+    ; Output: ESI = pointer to current shape bitmask
+    push eax
+    push ebx
+    
+    movzx eax, byte [current_shape_type]
+    shl eax, 4              ; * 16 (4 rotations * 4 bytes per pointer)
+    
+    movzx ebx, byte [current_rotation]
+    shl ebx, 2              ; * 4 (pointer size)
+    
+    add eax, ebx
+    lea esi, [shape_table + eax]
+    mov esi, [esi]          ; Dereference to get actual bitmask
+    
+    pop ebx
+    pop eax
+    ret
 
-draw_index:
-    pushad
-    add ebx, 1
-    add eax, 1
-    mov ecx, 3
-    mov edx, 3
-    mov esi, 2
-    call mode13_fill_rect
-	popad
-    ret
+
     
-draw_block:
-	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
-    ; imma do the same visual trick with snake cause it looks good
-    ; uuh wait im cooking
-    pushad
-    add eax, 1
-    add ebx, 1
-    mov ecx, 3
-    mov edx, 3
-    mov esi, 2
-    call mode13_fill_rect
-    
-    add eax, 4
-    mov ecx, 3
-    mov edx, 3
-    mov esi, 2
-    call mode13_fill_rect
-  
-    
-    sub eax, 4
-    add ebx, 4
-    mov ecx, 3
-    mov edx, 3
-    mov esi, 2
-    call mode13_fill_rect
- 
-    add eax, 4
-    mov ecx, 3
-    mov edx, 3
-    mov esi, 2
-    call mode13_fill_rect
-  
-	popad
-    ret
-    
-L_shape_r0:
-    db 0,0,1,0
-    db 0,0,1,0
-    db 0,0,1,1
+cube_r0:
+    db 1,1,0,0
+    db 1,1,0,0
+    db 0,0,0,0
     db 0,0,0,0
 
-current_shape db SHAPE_L
-SHAPE_L equ 0
+; L-piece rotation 0 (standard L)
+L_r0:
+    db 0,0,0,0
+    db 1,0,0,0
+    db 1,0,0,0
+    db 1,1,0,0
 
+; L-piece rotation 1 (rotated 90° clockwise)
+L_r1:
+    db 0,0,0,0
+    db 0,1,1,1
+    db 0,1,0,0
+    db 0,0,0,0
+
+; L-piece rotation 2 (rotated 180°)
+L_r2:
+    db 0,0,0,0
+    db 0,1,1,0
+    db 0,0,1,0
+    db 0,0,1,0
+
+; L-piece rotation 3 (rotated 270°)
+L_r3:
+    db 0,0,0,0
+    db 0,0,1,0
+    db 1,1,1,0
+    db 0,0,0,0
+
+
+
+; Lookup table for shape bitmasks
+shape_table:
+    dd cube_r0, cube_r0, cube_r0, cube_r0      ; Cube (all rotations same)
+    dd L_r0, L_r1, L_r2, L_r3                  ; L-piece rotations
+    
+draw_l_index:
+    pushad
+    add ebx, 1
+    mov ecx, 3
+    mov edx, 3
+    mov esi, 6
+    call mode13_fill_rect
+	popad
+    ret
+    
 draw_L:
 	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
-
     pushad
-    mov ecx, 4
-    mov edx, 16
-    mov esi, 15
-    call mode13_fill_rect
-    add ebx, 12
-    mov ecx, 8
-    mov edx, 4
-    mov esi, 15
-    call mode13_fill_rect
+ 	call draw_l_index
+ 	add ebx, 4
+ 	call draw_l_index
+ 	add ebx, 4
+ 	call draw_l_index
+ 	add eax, 4
+ 	call draw_l_index
+
 
 	popad
     ret
@@ -611,6 +698,12 @@ m13_rect_y:      dd 0
 m13_rect_width:  dd 0
 m13_rect_height: dd 0
 m13_rect_color:  dd 0
+
+SHAPE_CUBE  equ 1
+SHAPE_L     equ 0
+current_shape_type  db 0
+current_rotation    db 0
+temp_shape_ptr dd 0
 
 string_x dd 0
 string_y dd 0
