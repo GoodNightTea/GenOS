@@ -1,5 +1,3 @@
-[BITS 16]
-[ORG 0x1000]
 
 ; GenOS Stage 2 Bootloader
 ; Transitions from 16-bit real mode to 32-bit protected mode
@@ -11,6 +9,7 @@ I questioned why tf it keeps crashing, until I searched out and found out that s
 yea here we are yipee
 and again we gotta ugrade to 8kb...
 okay that was fast, we are back at it and Imma just upgrade to 16kb cause damn this is annoying
+yea that 16kb never actually worked anyway, the filesystem was just ass, time to switch to FAT12...
 %endif
 [BITS 16]
 [ORG 0x1000]
@@ -20,13 +19,13 @@ stage2_start:
     mov ax, 0x0013
     int 0x10
     
-    ; NOW enter protected mode
-    in al, 0x92
-    or al, 2
-    out 0x92, al
+    ; Enable A20 line (try multiple methods)
+    call enable_a20
     
+    ; Load GDT
     lgdt [gdt_descriptor]
     
+    ; Enter protected mode
     cli
     mov eax, cr0
     or eax, 1
@@ -34,60 +33,77 @@ stage2_start:
     
     jmp 0x08:protected_mode_start
 
-; === 32-BIT PROTECTED MODE CODE ===
+; ============================================================================
+; A20 Enable - Multiple methods for reliability
+; ============================================================================
+enable_a20:
+    ; Method 1: BIOS
+    mov ax, 0x2401
+    int 0x15
+    jnc .done
+    
+    ; Method 2: Fast A20 (port 0x92)
+    in al, 0x92
+    or al, 2
+    and al, 0xFE        ; Don't trigger reset
+    out 0x92, al
+
+.done:
+    ret
+
+; ============================================================================
+; 32-bit Protected Mode
+; ============================================================================
 [BITS 32]
 protected_mode_start:
-    ; Set up segment registers for 32-bit mode
-    mov ax, 0x10            ; Data segment selector
+    ; Set up segment registers
+    mov ax, 0x10
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
     mov ss, ax
     
-    ; Set up stack pointer
-    mov esp, 0x7000         ; Safe stack location
+    ; Set up stack
+    mov esp, 0x90000        ; Stack at 576KB (well above kernel)
     
-    ; Keep interrupts disabled
-    cli
+    ; Copy kernel from 0x2000 to 0x100000
+    ; We copy 64KB max to be safe (loader limits actual read)
+    mov esi, 0x2000
+    mov edi, 0x100000
+    mov ecx, 16384          ; 64KB / 4 = 16384 dwords
+    rep movsd
     
-    ; Copy kernel from temporary location to final location  
-    ; Source: 0x2000 (where Stage 1 loaded it)
-    ; Destination: 0x100000 (1MB - standard kernel location)
-    mov esi, 0x2000         ; Source address
-    mov edi, 0x100000       ; Destination address  
-    mov ecx, 4096           ; Copy 16384 bytes (4096 dwords) to match 16KB kernel
-    rep movsd               ; Copy kernel
-    
-    ; Jump to kernel entry point
+    ; Jump to kernel
     jmp 0x100000
 
-; Global Descriptor Table for protected mode
+; ============================================================================
+; Global Descriptor Table
+; ============================================================================
 gdt_start:
-    ; Null descriptor (required by x86)
+    ; Null descriptor
     dq 0
     
-    ; Code segment descriptor
-    dw 0xFFFF       ; Limit bits 0-15
-    dw 0x0000       ; Base bits 0-15
-    db 0x00         ; Base bits 16-23
-    db 0x9A         ; Access: Present, Ring 0, Code, Readable
-    db 0xCF         ; Flags: 4KB granularity, 32-bit, Limit bits 16-19
-    db 0x00         ; Base bits 24-31
+    ; Code segment: base=0, limit=4GB, executable, readable
+    dw 0xFFFF           ; Limit low
+    dw 0x0000           ; Base low
+    db 0x00             ; Base middle
+    db 0x9A             ; Access: present, ring 0, code, readable
+    db 0xCF             ; Flags: 4KB granularity, 32-bit
+    db 0x00             ; Base high
     
-    ; Data segment descriptor  
-    dw 0xFFFF       ; Limit bits 0-15
-    dw 0x0000       ; Base bits 0-15
-    db 0x00         ; Base bits 16-23
-    db 0x92         ; Access: Present, Ring 0, Data, Writable
-    db 0xCF         ; Flags: 4KB granularity, 32-bit, Limit bits 16-19
-    db 0x00         ; Base bits 24-31
+    ; Data segment: base=0, limit=4GB, writable
+    dw 0xFFFF
+    dw 0x0000
+    db 0x00
+    db 0x92             ; Access: present, ring 0, data, writable
+    db 0xCF
+    db 0x00
 gdt_end:
 
-; GDT descriptor for LGDT instruction
 gdt_descriptor:
-    dw gdt_end - gdt_start - 1  ; GDT size - 1
-    dd gdt_start                ; GDT base address
+    dw gdt_end - gdt_start - 1
+    dd gdt_start                ; NASM with ORG 0x1000 makes this absolute
 
 ; Pad to 512 bytes
 times 512-($-$$) db 0
