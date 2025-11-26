@@ -1,5 +1,5 @@
 ; ============================================================================
-; Keyboard Driver for Snake Game
+; Keyboard Driver for GenOS
 ; ============================================================================
 
 ; Scancode definitions (make codes - when key is pressed)
@@ -18,16 +18,17 @@ SCANCODE_LEFT       equ 0x4B
 SCANCODE_DOWN       equ 0x50
 SCANCODE_RIGHT      equ 0x4D
 SCANCODE_ESC        equ 0x01
-SCANCODE_R			equ 0x13
+SCANCODE_R          equ 0x13
+SCANCODE_SPACE      equ 0x39
 
-; Direction constants
+; Direction constants (for snake)
 DIR_RIGHT           equ 0
 DIR_UP              equ 1
 DIR_LEFT            equ 2
 DIR_DOWN            equ 3
 
 ; ============================================================================
-; process_scancode: Process keyboard scancode and update direction
+; process_scancode: Process keyboard scancode
 ; Input: AL = scancode from port 0x60
 ; ============================================================================
 process_scancode:
@@ -35,13 +36,18 @@ process_scancode:
     
     ; Store scancode for debugging
     mov [last_scancode], al
+    
+    ; Check if we're in tetris mode
     cmp byte [is_tetris], 1
     je .tetris_input
+    
+    ; ---- SNAKE/MENU INPUT ----
+    
     ; Check if it's a break code (key release - bit 7 set)
     test al, 0x80
     jnz .done
     
-    ; Check for arrow keys or WASD and R
+    ; Check for arrow keys or WASD
     cmp al, SCANCODE_RIGHT
     je .set_right
     cmp al, SCANCODE_D
@@ -67,6 +73,8 @@ process_scancode:
     cmp al, SCANCODE_A
     je .set_left
     
+    cmp al, SCANCODE_DOWN
+    je .set_down
     cmp al, SCANCODE_S
     je .set_down
     
@@ -74,140 +82,110 @@ process_scancode:
     je .handle_esc
     
     jmp .done
-    
 
-.tetris_input:	
+; ============================================================================
+; TETRIS INPUT HANDLING
+; ============================================================================
+.tetris_input:
+    ; Handle soft drop (S key press/release)
     cmp al, SCANCODE_S
-    je .tetris_s_press
+    je .tetris_soft_drop_on
     cmp al, SCANCODE_S_RELEASE
-    je .tetris_s_release
-    cmp al, SCANCODE_W
-    je .tetris_w
+    je .tetris_soft_drop_off
+    cmp al, SCANCODE_DOWN
+    je .tetris_soft_drop_on
+    cmp al, 0xD0                    ; Down arrow release
+    je .tetris_soft_drop_off
+    
+    ; Ignore other release codes
+    test al, 0x80
+    jnz .done
+    
+    ; Movement keys
     cmp al, SCANCODE_A
-    je .tetris_a
+    je .tetris_left
+    cmp al, SCANCODE_LEFT
+    je .tetris_left
+    
     cmp al, SCANCODE_D
-    je .tetris_d
-    cmp al, SCANCODE_R
-    je .triple_fault
+    je .tetris_right
+    cmp al, SCANCODE_RIGHT
+    je .tetris_right
+    
+    ; Rotation
+    cmp al, SCANCODE_W
+    je .tetris_rotate
+    cmp al, SCANCODE_UP
+    je .tetris_rotate
+    cmp al, SCANCODE_SPACE
+    je .tetris_rotate
+    
+    ; Pause
     cmp al, SCANCODE_ESC
     je .handle_esc
     
-    jmp .done
- 
-.tetris_s_press:
-    cmp byte [s_pressed], 1    
-    je .done           			
-    mov byte [s_pressed], 1
-    sub dword [speed], 4        
+    ; Reset
+    cmp al, SCANCODE_R
+    je .triple_fault
+    
     jmp .done
 
-.tetris_s_release:
-    cmp byte [s_pressed], 0  
-    je .done_released
-    mov byte [s_pressed], 0
-    add dword [speed], 4      
-    
-    jmp .done
-.done_released:
-    mov al, 0x20
-    out 0x20, al
-    popad
-    iret
-.tetris_w:
-	jmp .done
-	
-.tetris_a:
-    call refresh_index
-    cmp dword [current_x_index], 0
-    jle .done                ; Already at left edge
-    
-    ; Check top-left: (x-1, y)
-    mov eax, [current_y_index]
-    imul eax, 20
-    mov ebx, [current_x_index]
-    dec ebx                         ; x - 1
-    add eax, ebx
-    cmp byte [tetris_grid + eax], 0
-    jne .done
-    
-    ; Check bottom-left: (x-1, y+1)
-    mov eax, [current_y_index]
-    inc eax                         ; y + 1
-    imul eax, 20
-    mov ebx, [current_x_index]
-    dec ebx                         ; x - 1
-    add eax, ebx
-    cmp byte [tetris_grid + eax], 0
-    jne .done
-    
-    ; Safe to move left
-    sub dword [current_piece_x], 4
-    dec dword [current_x_index]
+.tetris_left:
+    call tetris_move_left
     jmp .done
 
-.tetris_d:
-    call refresh_index
-    cmp dword [current_x_index], 18  ; 20 - 2 = 18 (since block is 2 wide)
-    jge .done
-    
-    ; Check top-right: (x+2, y)
-    mov eax, [current_y_index]
-    imul eax, 20
-    mov ebx, [current_x_index]
-    add ebx, 2                      ; x + 2 (one past the block's right edge)
-    add eax, ebx
-    cmp byte [tetris_grid + eax], 0
-    jne .done
-    
-    ; Check bottom-right: (x+2, y+1)
-    mov eax, [current_y_index]
-    inc eax                         ; y + 1
-    imul eax, 20
-    mov ebx, [current_x_index]
-    add ebx, 2
-    add eax, ebx
-    cmp byte [tetris_grid + eax], 0
-    jne .done
-    
-    ; Safe to move right
-    add dword [current_piece_x], 4
-    inc dword [current_x_index]
+.tetris_right:
+    call tetris_move_right
     jmp .done
-	
-	
+
+.tetris_rotate:
+    call tetris_rotate
+    jmp .done
+
+.tetris_soft_drop_on:
+    call tetris_soft_drop_start
+    jmp .done
+
+.tetris_soft_drop_off:
+    call tetris_soft_drop_stop
+    jmp .done
+
+; ============================================================================
+; MENU CHOICES
+; ============================================================================
 .menu_choice_1:
     mov byte [menu_choice], 1
     jmp .done
     
 .menu_choice_2:
-	xor byte [is_tetris], 1
+    mov byte [is_tetris], 1
     mov byte [menu_choice], 2
     jmp .done
+
 .menu_choice_3:
-	;xor byte [is_tetris], 1
     mov byte [menu_choice], 3
     jmp .done
-	
+
+; ============================================================================
+; TRIPLE FAULT (reset)
+; ============================================================================
 .triple_fault:
-	xor eax, eax
-	mov [idt_desc + 2], eax  ; Set IDT base to 0x00000000
-	lidt [idt_desc]           ; Load garbage IDT
+    xor eax, eax
+    mov [idt_desc + 2], eax
+    lidt [idt_desc]
+    int 0x00
 
-	int 0x00                  ; Trigger divide by zero
-	; success >:)
-
-
+; ============================================================================
+; SNAKE DIRECTION HANDLING
+; ============================================================================
 .set_right:
-    ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_LEFT
     je .done
     mov byte [current_direction], DIR_RIGHT
-	jmp .done
+    jmp .done
 
 .set_up:
-
-    ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_DOWN
     je .done
@@ -215,8 +193,6 @@ process_scancode:
     jmp .done
 
 .set_left:
-
-    ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_RIGHT
     je .done
@@ -224,20 +200,22 @@ process_scancode:
     jmp .done
 
 .set_down:
-
-    ; Prevent 180-degree turns
     mov al, [current_direction]
     cmp al, DIR_UP
     je .done
     mov byte [current_direction], DIR_DOWN
     jmp .done
 
+; ============================================================================
+; PAUSE/UNPAUSE
+; ============================================================================
 .handle_esc:
-    xor byte [game_running], 1       ; Flip bit: 0→1 or 1→0
-.done:
+    xor byte [game_running], 1
 
+.done:
     popad
     ret
+
 ; ============================================================================
 ; get_direction_delta: Get X and Y delta based on current direction
 ; Output: EAX = delta_x, EBX = delta_y
@@ -256,7 +234,6 @@ get_direction_delta:
     cmp ecx, DIR_DOWN
     je .down
     
-    ; Default: right
 .right:
     mov eax, 1
     mov ebx, 0
@@ -275,7 +252,6 @@ get_direction_delta:
 .down:
     mov eax, 0
     mov ebx, 1
-    jmp .done
 
 .done:
     pop ecx
@@ -285,9 +261,10 @@ get_direction_delta:
 ; Data Section
 ; ============================================================================
 
-current_direction   db DIR_RIGHT        ; Starting direction
-last_scancode       db 0                ; For debugging
-game_running        db 1                ; Game state flag
-menu_choice 		db 0
-is_tetris			db 0				; check if its tetris or nah
-s_pressed 			db 0
+current_direction   db DIR_RIGHT
+last_scancode       db 0
+game_running        db 1
+menu_choice         db 0
+is_tetris           db 0
+is_pong				db 0
+s_pressed           db 0
