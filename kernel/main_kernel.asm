@@ -32,8 +32,12 @@ kernel_entry:
     je .test
     cmp al, 4
     je .gof
+    cmp al, 5
+    je .pong
     jmp .wait_for_choice             ; Keep waiting if 0
-
+.pong:
+	call pong
+	jmp .pong
 .gof:
 	call gameoflife
 	jmp .gof
@@ -51,6 +55,7 @@ kernel_entry:
 	jmp .snake_continue   
 .tetris:
     call tetris_setup
+
     
 .snake_continue:
     ; Setup palette colors
@@ -655,6 +660,7 @@ direction_based_race:
 %include "kernel/tetris.asm"
 %include "kernel/test.asm"
 %include "kernel/gameoflife.asm"
+%include "kernel/pong.asm"
 ; ============================================================================
 ; Data Section
 ; ============================================================================
