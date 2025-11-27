@@ -43,7 +43,7 @@ tetris_init:
     
     ; Reset score and speed
     mov dword [tet_score], 0
-    mov dword [tet_drop_speed], 8
+    mov dword [tet_drop_speed], 6
     
     ; Initialize piece state
     mov byte [tet_current_type], 0
@@ -278,7 +278,7 @@ tetris_soft_drop_start:
     ret
 
 tetris_soft_drop_stop:
-    mov dword [tet_drop_speed], 8
+    mov dword [tet_drop_speed], 6
     ret
 
 ; ============================================================================
@@ -1011,7 +1011,7 @@ tet_current_type:   db 0            ; Current piece type (0-6)
 tet_current_rot:    db 0            ; Current rotation (0-3)
 tet_next_type:      db 1            ; Next piece type
 tet_score:          dd 0
-tet_drop_speed:     dd 8            ; Frames between drops
+tet_drop_speed:     dd 6            ; Frames between drops
 
 tet_test_x:         dd 0            ; Temp for collision testing
 tet_test_y:         dd 0
