@@ -30,7 +30,17 @@ kernel_entry:
     je .tetris
     cmp al, 3
     je .test
+    cmp al, 4
+    je .gof
+    cmp al, 5
+    je .pong
     jmp .wait_for_choice             ; Keep waiting if 0
+.pong:
+	call pong
+	jmp .pong
+.gof:
+	call gameoflife
+	jmp .gof
 .test:
 	call test
 	jmp .test	
@@ -45,6 +55,7 @@ kernel_entry:
 	jmp .snake_continue   
 .tetris:
     call tetris_setup
+
     
 .snake_continue:
     ; Setup palette colors
@@ -131,12 +142,7 @@ kernel_entry:
 	mov ebx, 80                 ; Y position
 	mov dl, 75                  ; White color
 	call mode13_print_string
-	
-	mov esi, t3fault
-	mov eax, 100
-	mov ebx, 60
-	mov dl, 90
-	call mode13_print_string
+
 .pause_loop:
     hlt                              
     cmp byte [game_running], 1       
@@ -653,7 +659,8 @@ direction_based_race:
 %include "timer/timer_driver.asm"
 %include "kernel/tetris.asm"
 %include "kernel/test.asm"
-
+%include "kernel/gameoflife.asm"
+%include "kernel/pong.asm"
 ; ============================================================================
 ; Data Section
 ; ============================================================================
@@ -678,13 +685,8 @@ apple_count   dd 0               ; Changed to dword for consistency
 temp_spawn_x  dd 0 		
 temp_spawn_y  dd 0		 
 paused 	      db 'PAUSED', 0
-t3fault 		  db 'PRESS R FOR TRIPPLE FAULT', 0
-menu			  db 'SNAKE OR TETRIS', 0
-snake			  db 'SNAKE', 0
-; ============================================================================
-; Snake 13h VGA transition
-; ============================================================================
-CELL_SIZE equ 8
+menu		  db 'SNAKE OR TETRIS', 0
+snake		  db 'SNAKE', 0
 
 
 ; IDT structures

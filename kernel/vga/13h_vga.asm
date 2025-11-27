@@ -267,6 +267,185 @@ mode13_fill_rect:
     ret
 
 ; ----------------------------------------------------------------------------
+; mode13_pong: Draw offbrand version of a ball (cant be asked to fix the baller function)
+; Input: (Center) EAX = x, EBX = y, ECX = radius, ESI = color
+; ----------------------------------------------------------------------------
+mode13_pong:
+	push eax
+	push ebx
+	mov edx, ecx
+	call mode13_fill_rect
+	add ebx, ecx
+	call mode13_fill_rect
+	pop ebx
+	push ebx
+	sub ebx, ecx
+	call mode13_fill_rect
+	pop ebx
+	push ebx
+	add eax, ecx
+	call mode13_fill_rect
+	pop eax
+	push eax
+	sub eax, ecx
+	call mode13_fill_rect
+.done:
+	pop eax
+	pop ebx
+    ret
+; ----------------------------------------------------------------------------
+; mode13_ball: Draw 90210 ball
+; Input: (Center) EAX = x, EBX = y, ECX = radius, ESI = color
+; Bresenham's circle algorithm - concept is to calculate 1/8 of a circle and mirror it to all octants
+; shits more complicated than the memory management engine bru fuck this
+; ----------------------------------------------------------------------------
+mode13_ball:
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push edi
+    mov dword [color], esi
+    mov cl, [color]
+    
+    mov edi, 0              ; x = 0
+    ; y = radius (already in ECX)
+    mov edx, 1
+    sub edx, ecx            ; decision = 1 - radius
+    
+.circle_loop:
+    ; Draw 8 symmetric points
+    call .plot_8_points
+    
+    ; if x >= y, we're done
+    cmp edi, ecx
+    jge .done
+    
+    inc edi                 ; x++
+    
+    ; Update decision variable
+    cmp edx, 0
+    jl .decision_negative
+    
+.decision_positive:
+    dec ecx                 ; y--
+    mov eax, edi
+    sub eax, ecx
+    shl eax, 1
+    add eax, 1
+    add edx, eax
+    jmp .circle_loop
+    
+.decision_negative:
+    mov eax, edi
+    shl eax, 1
+    add eax, 1
+    add edx, eax
+    jmp .circle_loop
+.plot_8_points:
+	; stack has x, y and radius
+	; plot (cx+x, cy+y), (cx-x, cy+y), (cx+x, cy-y), (cx+x, cy-y)
+	; plot (cx+y, cy+x), (cx-y, cy+x), (cx+y, cy-x), (cx-y, cy-x)
+	; do NOT ask me how tf this works, only god knows...
+	push eax
+	push ebx
+	mov eax, [esp + 24]
+	mov ebx, [esp + 20]
+	
+	; (cx+x, cy+y)
+    push eax
+    push ebx
+    add eax, edi
+    add ebx, ecx
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    
+    ; (cx-x, cy+y)
+    push eax
+    push ebx
+    sub eax, edi
+    add ebx, ecx
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    
+    ;(cx+x, cy-y)
+    push eax
+    push ebx
+    add eax, edi
+    sub ebx, ecx
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    ;(cx+x, cy-y)
+    push eax
+    push ebx
+    add eax, edi
+    sub ebx, ecx
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    
+    ;(cx+y, cy+x)
+    push eax
+    push ebx
+    add eax, ecx
+    add ebx, edi
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    
+    ;(cx-y, cy+x)
+    push eax
+    push ebx
+    sub eax, ecx
+    add ebx, edi
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    ;(cx+y, cy-x)
+    push eax
+    push ebx
+    add eax, ecx
+    sub ebx, edi
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    ;(cx-y, cy-x)
+    push eax
+    push ebx
+    sub eax, ecx
+    sub ebx, edi
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    ret
+.done:
+    pop edi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    ret
+
+; ----------------------------------------------------------------------------
 ; mode13_rgb_rect: Draw filled rectangle with changing color per pixel
 ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = starting color
 ; ----------------------------------------------------------------------------
@@ -349,259 +528,7 @@ draw_border:
     
     popad
     ret
-; ============================================================================
-; Tetris assets
-; ============================================================================
 
-clear_playfield:
-	pushad
-    ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
-    mov eax, 120
-    mov ebx, 20
-    mov ecx, 86
-    mov edx, 158
-    mov esi, 0
-    call mode13_fill_rect
-    popad
-    ret
-    
-redraw_dropped:
-    pushad
-    
-    xor esi, esi              ; y index (0-18)
-    
-.row_loop:
-    xor edi, edi              ; x index (0-9)
-    
-.col_loop:
-    ; Calculate grid offset: (y * 10) + x
-    mov eax, esi
-    imul eax, 20
-    add eax, edi
-    
-    ; check if cell full
-    cmp byte [tetris_grid + eax], 0
-    je .skip_cell             ; empty like bankacc
-    
-    ; index full, convert
-    ; x pixel = 120 + (x_index * 8)
-    mov eax, edi
-    imul eax, 4
-    add eax, 120
-    
-    ; y pixel = 20 + (y_index * 8)
-    mov ebx, esi
-    imul ebx, 4
-    add ebx, 20
-    
-    ; Draw the index
-    push esi
-    push edi
-    call draw_index           
-    pop edi
-    pop esi
-    
-.skip_cell:
-    inc edi
-    cmp edi, 20               ; done with this row?
-    jl .col_loop
-    
-    inc esi
-    cmp esi, 38               ; done with all rows?
-    jl .row_loop
-    
-    popad
-    ret
-
-
-extermish_line:
-	pushad
-	call refresh_index
-	mov eax, 120
-	; Calculate Y coord from CURRENT index
-    mov ebx, [current_y_index] 
-	imul ebx, 4
-	add ebx, 20
-.clear_line_y:
-	mov ecx, 80
-	mov edx, 4
-	mov esi, 15
-	call mode13_fill_rect
-	popad
-	ret
-	
-
-
-draw_hud:
-    pushad
-
-    ; Main play area border (10 blocks wide × 20 blocks tall)
-    ; Using 8-pixel blocks = 80×160 pixel play area
-    ; Centered-ish on screen (320×200)
-    
-    ; Left border (3 pixels thick)
-    mov eax, 117              ; Start X (leaves room on left)
-    mov ebx, 18               ; Start Y (leaves room at top)
-    mov ecx, 3                ; Width
-    mov esi, 15
-    mov edx, 156              ; Height (20 blocks × 8 + borders)
-
-    call mode13_fill_rect
-    ; Right border
-    mov eax, 201              ; 117 + 3 + 80 (play area)
-    mov ebx, 18
-    mov ecx, 3
-    mov esi, 15
-    mov edx, 156
-
-    call mode13_fill_rect
-	
-    ; Top border
-    mov eax, 117
-    mov ebx, 17
-    mov ecx, 87             ; 3 + 80 + 3 + 1 spacing
-    mov edx, 3
-    mov esi, 15
-    call mode13_fill_rect
-    ; Bottom border
-    mov eax, 117
-    mov ebx, 173              ; 18 + 3 + 160 (play area)
-    mov ecx, 87
-    mov edx, 3
-    mov esi, 15
-    call mode13_fill_rect
-    ; Score label (top left)
-    mov esi, score_text       ; "SCORE"
-    mov eax, 10
-    mov ebx, 30
-    mov dl, 15
-    call mode13_print_string
-    
-    
-    ; Next piece label (right side)
-    mov esi, next_text        ; "NEXT"
-    mov eax, 220
-    mov ebx, 30
-    mov dl, 15
-    call mode13_print_string
-    
-    ; Next piece preview box
-    mov eax, 215
-    mov ebx, 45
-    mov ecx, 50
-    mov edx, 50
-    call mode13_fill_rect
-    mov eax, 218
-    mov ebx, 48
-    mov ecx, 44
-    mov edx, 44
-    mov esi, 0
-    call mode13_fill_rect
-	
-	mov eax, 237
-	mov ebx, 60
-	call draw_L
-	
-    popad
-    ret
-
-
-draw_index:
-    pushad
-    add ebx, 1
-    add eax, 1
-    mov ecx, 3
-    mov edx, 3
-    mov esi, 2
-    call mode13_fill_rect
-	popad
-    ret
-    
-draw_block:
-	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
-    ; imma do the same visual trick with snake cause it looks good
-    ; uuh wait im cooking
-    pushad
-    add eax, 1
-    add ebx, 1
-    mov ecx, 3
-    mov edx, 3
-    mov esi, 2
-    call mode13_fill_rect
-    
-    add eax, 4
-    mov ecx, 3
-    mov edx, 3
-    mov esi, 2
-    call mode13_fill_rect
-  
-    
-    sub eax, 4
-    add ebx, 4
-    mov ecx, 3
-    mov edx, 3
-    mov esi, 2
-    call mode13_fill_rect
- 
-    add eax, 4
-    mov ecx, 3
-    mov edx, 3
-    mov esi, 2
-    call mode13_fill_rect
-  
-	popad
-    ret
-    
-L_shape_r0:
-    db 0,0,1,0
-    db 0,0,1,0
-    db 0,0,1,1
-    db 0,0,0,0
-
-current_shape db SHAPE_L
-SHAPE_L equ 0
-
-draw_L:
-	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
-
-    pushad
-    mov ecx, 4
-    mov edx, 16
-    mov esi, 15
-    call mode13_fill_rect
-    add ebx, 12
-    mov ecx, 8
-    mov edx, 4
-    mov esi, 15
-    call mode13_fill_rect
-
-	popad
-    ret
-exterminate_L:
-	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
-
-    pushad
-    mov ecx, 4
-    mov edx, 16
-    mov esi, 0
-    call mode13_fill_rect
-    add ebx, 12
-    mov ecx, 8
-    mov edx, 4
-    mov esi, 0
-    call mode13_fill_rect
-
-	popad
-    ret
-erase_block:
-    ; Input: EAX = x, EBX = y
-    pushad
-    mov ecx, 8
-    mov edx, 8
-    mov esi, 0
-    call mode13_fill_rect
-    popad
-    ret
 ; ============================================================================
 ; DATA SECTION FOR 13h VGA DRIVER
 ; ============================================================================
@@ -612,13 +539,11 @@ m13_rect_width:  dd 0
 m13_rect_height: dd 0
 m13_rect_color:  dd 0
 
+
+color			 dd 0
 string_x dd 0
 string_y dd 0
 string_color db 0
-score_text db 'SCORE', 0
-lines_text db 'LINES', 0
-level_text db 'LEVEL', 0
-next_text  db 'NEXT', 0
 
 init_pics:
     ; ICW1: Initialize both PICs
