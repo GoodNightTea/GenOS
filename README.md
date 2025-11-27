@@ -11,24 +11,23 @@ sudo apt install nasm qemu-system-x86
 ```
 ### Compile
 ```
-nasm -f bin boot/first/boot.asm -o build/boot.bin
-nasm -f bin boot/second/stage2.asm -o build/stage2.bin
-mkdir -p build/images
-nasm -f bin -I kernel/ kernel/main_kernel.asm -o build/kernel.bin
-python3 tools/genfs_v2_builder.py build/boot.bin build/images/genos.img build/stage2.bin build/kernel.bin
+sh tools/dynamic_builder.sh 
 ```
 ### Use
 **In Qemu:**
-qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
-
+simple: qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
+debug:  qemu-system-x86_64 -drive file=$IMAGE,format=raw,if=floppy -no-reboot -no-shutdown -d int,cpu_reset
 ## Controls
-
 ### Menu
 | Key | Action |
 |-----|--------|
-| **1** | Play Snake |
+| **1** | Play Snake  |
 | **2** | Play Tetris |
-| **ESC** | Exit to Menu |
+| **3** | Test  |
+| **4** | Play Game of Life |
+| **5** | Play Pong  |
+| **ESC** | Pause |
+| **R** | Reset |
 
 ### Snake
 | Key | Action |
@@ -37,25 +36,36 @@ qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
 | **A** | Move Left |
 | **S** | Move Down |
 | **D** | Move Right |
-| **SPACE** | Pause/Resume |
-| **ESC** | Return to Menu |
-| **R** | Triple fault |
 
 ### Tetris
 | Key | Action |
 |-----|--------|
 | **A** | Move Left |
 | **D** | Move Right |
-| **S** | Clear Line |              // DEBUG
-| **SPACE** | Pause/Resume |
-| **ESC** | Return to Menu |
-| **R** | Triple fault |
-#### Fyi: the triple fault is intentional, use case is when I need to reset 
-### Tetris
-<img width="642" height="390" alt="image" src="https://github.com/user-attachments/assets/3896338b-ce55-4927-9a46-ed050fb7cbfa" />
-
+| **S** | Soft Drop |             
+| **SPACE** | Rotate |
+### Pong
+| Key | Action |
+|-----|--------|
+| **A** | Player 1 left |
+| **D** | Player 1 right |
+| **Left-arrow** | Player 2 left |
+| **Right-arrow** | Player 2 right |
 ### Snake
 <img width="642" height="390" alt="image" src="https://github.com/user-attachments/assets/1cd8dff8-d5d8-4233-bdec-9e0fde70757d" />
+
+### Tetris
+<img width="634" height="372" alt="image" src="https://github.com/user-attachments/assets/80b80c0d-505f-4ba7-996d-4ad74efc795a" />
+
+### Test
+<img width="634" height="372" alt="image" src="https://github.com/user-attachments/assets/8f7d27d8-e329-4765-be5e-89abdfa714e2" />
+
+### Game of Life
+<img width="640" height="403" alt="image" src="https://github.com/user-attachments/assets/c7c02743-3a9a-43ad-9aeb-d708ee433bc9" />
+
+### Pong 
+<img width="640" height="403" alt="image" src="https://github.com/user-attachments/assets/ecdf5b91-db1f-4699-9506-5292f85f38fc" />
+
 
 ## What this is
 - Custom bootloader chain handling 16-bit to 32-bit mode transitions
@@ -66,11 +76,8 @@ qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
 - Pseudo random number generation
 
 ## Why?
-
-// *After first attempting to build a full-featured OS with filesystem support (which is insane), I pivoted to something more achievable and demonstrable that doesn't require me to sacrifice my sanity.*
-Well it seems like I am going to have to face my filesystem support scare one way or another, soon...
+Meant as the Software stack for a graduation project that involved creating a Gameboy, this was more of a practice run as I realized x86_64 isn't really used in microcontrollers... 
 ## Features
-
 ### Low-Level Systems
 - **Two-stage bootloader**: BIOS boot sector → Stage 2 loader → Protected mode kernel
 - **Protected mode operation**: Full 32-bit mode with GDT configuration
@@ -79,20 +86,6 @@ Well it seems like I am going to have to face my filesystem support scare one wa
 - **Keyboard driver**: PS/2 scancode processing with press/release detection
 - **VGA Mode 13h**: 320×200 resolution, 256-color palette with the most beautiful font ever created
 
-### Snake Implementation (work in progress)
-- **Circular queue**: Ring buffer for snake segments (up to 100 length)
-- **Collision detection**: Optimized X-then-Y early-exit checking
-- **Apple Management System**: Advanced multi-stage extremely complex fast insane quantum apple tracker (very complex)
-- **Pseudo-random generation**: XorShift32 algorithm for apple spawning
-- **Frame-based timing**: Interrupt-driven game loop with directional speed compensation
-  
-### Tetris Implementation (work in progress)
-- **Grid system**: 10×19 playfield (columns 0-9, rows 0-18)
-- **Collision detection**: 190-byte 2D array tracking occupied cells
-- **Index-based movement**: Keyboard input controls grid indices, not raw pixels like in snake
-- **Block placement**: Automatic grid registration when blocks land
-- **Array Manipulation**: Checks for completed x-indices and there is one, it shifts the y indice down by one and clear the upper artifact
-- **Race condition feature**: Can slide blocks at the bottom (idk if I should keep or remove it, classic tetris got it as well sooo idk o.0)
 
 ```
 ## Architecture 
@@ -135,7 +128,10 @@ Well it seems like I am going to have to face my filesystem support scare one wa
 │       └── stage2.asm            # Protected mode transition
 ├── kernel/
 │   ├── main_kernel.asm           # System Init + Game Selection + (conditional) Snake Game loop 
-│   ├── tetris.asm                # System Init + Tetris game loop 
+│   ├── tetris.asm                # Tetris game loop 
+│   ├── test.asm                  # VGA Color display demonstration 
+│   ├── pong.asm                  # Pong
+│   ├── gameoflife.asm            # Game of life simulation 
 │   ├── keyboard/
 │   │   └── keyboard_driver.asm   # Scancode processing
 │   ├── timer/
@@ -144,8 +140,8 @@ Well it seems like I am going to have to face my filesystem support scare one wa
 │   │   └── font1.asm             # The most beautiful fon ever
 │   └── vga/
 │       └── 13h_vga.asm           # VGA driver
-└── tools/
-    └── genfs_v2_builder.py       # Disk image builder
+└── tools
+    └── dynamic_builder.sh        # Image formater
 ```
 ## Issues
 ### Snake:
@@ -153,10 +149,10 @@ Well it seems like I am going to have to face my filesystem support scare one wa
 - **No self-collision**: Snake can pass through itself (feature, enjoy it)
 - **Single-threaded**: No multitasking or process management 
 - **Race-Conditions**: Rotation issue and potential apple collision/spawning issue (unconfirmed)
-### Tetris:
-- **Lacking Implementation 1**: I still have to implement like everything inside the HUD that will get displayed
-- **Lacking Implementation 2**: More than just an 8x8 block
-
+### Pong:
+- **No Movement**: The ball is still static
+- **No Memory Management**: No memory storage of current paddle and ball position for collision checks
+- **No Pause String**: yea pretty much says it, no hlt
 
 ## Contact
 **Discord**: GoodNightTea
