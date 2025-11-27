@@ -267,6 +267,185 @@ mode13_fill_rect:
     ret
 
 ; ----------------------------------------------------------------------------
+; mode13_pong: Draw offbrand version of a ball (cant be asked to fix the baller function)
+; Input: (Center) EAX = x, EBX = y, ECX = radius, ESI = color
+; ----------------------------------------------------------------------------
+mode13_pong:
+	push eax
+	push ebx
+	mov edx, ecx
+	call mode13_fill_rect
+	add ebx, ecx
+	call mode13_fill_rect
+	pop ebx
+	push ebx
+	sub ebx, ecx
+	call mode13_fill_rect
+	pop ebx
+	push ebx
+	add eax, ecx
+	call mode13_fill_rect
+	pop eax
+	push eax
+	sub eax, ecx
+	call mode13_fill_rect
+.done:
+	pop eax
+	pop ebx
+    ret
+; ----------------------------------------------------------------------------
+; mode13_ball: Draw 90210 ball
+; Input: (Center) EAX = x, EBX = y, ECX = radius, ESI = color
+; Bresenham's circle algorithm - concept is to calculate 1/8 of a circle and mirror it to all octants
+; shits more complicated than the memory management engine bru fuck this
+; ----------------------------------------------------------------------------
+mode13_ball:
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push edi
+    mov dword [color], esi
+    mov cl, [color]
+    
+    mov edi, 0              ; x = 0
+    ; y = radius (already in ECX)
+    mov edx, 1
+    sub edx, ecx            ; decision = 1 - radius
+    
+.circle_loop:
+    ; Draw 8 symmetric points
+    call .plot_8_points
+    
+    ; if x >= y, we're done
+    cmp edi, ecx
+    jge .done
+    
+    inc edi                 ; x++
+    
+    ; Update decision variable
+    cmp edx, 0
+    jl .decision_negative
+    
+.decision_positive:
+    dec ecx                 ; y--
+    mov eax, edi
+    sub eax, ecx
+    shl eax, 1
+    add eax, 1
+    add edx, eax
+    jmp .circle_loop
+    
+.decision_negative:
+    mov eax, edi
+    shl eax, 1
+    add eax, 1
+    add edx, eax
+    jmp .circle_loop
+.plot_8_points:
+	; stack has x, y and radius
+	; plot (cx+x, cy+y), (cx-x, cy+y), (cx+x, cy-y), (cx+x, cy-y)
+	; plot (cx+y, cy+x), (cx-y, cy+x), (cx+y, cy-x), (cx-y, cy-x)
+	; do NOT ask me how tf this works, only god knows...
+	push eax
+	push ebx
+	mov eax, [esp + 24]
+	mov ebx, [esp + 20]
+	
+	; (cx+x, cy+y)
+    push eax
+    push ebx
+    add eax, edi
+    add ebx, ecx
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    
+    ; (cx-x, cy+y)
+    push eax
+    push ebx
+    sub eax, edi
+    add ebx, ecx
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    
+    ;(cx+x, cy-y)
+    push eax
+    push ebx
+    add eax, edi
+    sub ebx, ecx
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    ;(cx+x, cy-y)
+    push eax
+    push ebx
+    add eax, edi
+    sub ebx, ecx
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    
+    ;(cx+y, cy+x)
+    push eax
+    push ebx
+    add eax, ecx
+    add ebx, edi
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    
+    ;(cx-y, cy+x)
+    push eax
+    push ebx
+    sub eax, ecx
+    add ebx, edi
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    ;(cx+y, cy-x)
+    push eax
+    push ebx
+    add eax, ecx
+    sub ebx, edi
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    ;(cx-y, cy-x)
+    push eax
+    push ebx
+    sub eax, ecx
+    sub ebx, edi
+    push esi
+    call mode13_set_pixel
+    pop esi
+    pop ebx
+    pop eax
+    ret
+.done:
+    pop edi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    ret
+
+; ----------------------------------------------------------------------------
 ; mode13_rgb_rect: Draw filled rectangle with changing color per pixel
 ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = starting color
 ; ----------------------------------------------------------------------------
@@ -361,7 +540,7 @@ m13_rect_height: dd 0
 m13_rect_color:  dd 0
 
 
-
+color			 dd 0
 string_x dd 0
 string_y dd 0
 string_color db 0
