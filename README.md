@@ -15,8 +15,10 @@ sh tools/dynamic_builder.sh
 ```
 ### Use
 **In Qemu:**
-simple: qemu-system-x86_64 -drive file=build/images/genos.img,format=raw,if=floppy
-debug:  qemu-system-x86_64 -drive file=$IMAGE,format=raw,if=floppy -no-reboot -no-shutdown -d int,cpu_reset
+
+simple: qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy
+
+debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-reboot -no-shutdown -d int,cpu_reset
 ## Controls
 ### Menu
 | Key | Action |
