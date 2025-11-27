@@ -42,7 +42,10 @@ process_scancode:
     
     ; Store scancode for debugging
     mov [last_scancode], al
-    
+    cmp al, SCANCODE_R
+    je .triple_fault
+    cmp al, SCANCODE_ESC
+    je .handle_esc
     ; Check if we're in tetris mode
     cmp byte [is_tetris], 1
     je .tetris_input
@@ -54,11 +57,7 @@ process_scancode:
     test al, 0x80
     jnz .done
     
-    ; Check for arrow keys or WASD
-    cmp al, SCANCODE_RIGHT
-    je .set_right
-    cmp al, SCANCODE_D
-    je .set_right
+
     
     cmp al, SCANCODE_1
     je .menu_choice_1
@@ -70,9 +69,12 @@ process_scancode:
     je .menu_choice_4
     cmp al, SCANCODE_5
     je .menu_choice_5
-    cmp al, SCANCODE_R
-    je .triple_fault
-    
+
+    ; Check for arrow keys or WASD
+    cmp al, SCANCODE_RIGHT
+    je .set_right
+    cmp al, SCANCODE_D
+    je .set_right
     cmp al, SCANCODE_UP
     je .set_up
     cmp al, SCANCODE_W
@@ -88,8 +90,7 @@ process_scancode:
     cmp al, SCANCODE_S
     je .set_down
     
-    cmp al, SCANCODE_ESC
-    je .handle_esc
+
     
     jmp .done
 
@@ -130,13 +131,6 @@ process_scancode:
     cmp al, SCANCODE_SPACE
     je .tetris_rotate
     
-    ; Pause
-    cmp al, SCANCODE_ESC
-    je .handle_esc
-    
-    ; Reset
-    cmp al, SCANCODE_R
-    je .triple_fault
     
     jmp .done
 
