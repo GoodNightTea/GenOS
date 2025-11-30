@@ -14,6 +14,45 @@ SCANCODE_7          equ 0x08
 SCANCODE_8          equ 0x09
 SCANCODE_9          equ 0x0A
 
+; Row 2 - QWERTY row
+SCANCODE_Q          equ 0x10
+SCANCODE_E          equ 0x12
+SCANCODE_T          equ 0x14
+SCANCODE_Y          equ 0x15
+SCANCODE_U          equ 0x16
+SCANCODE_I          equ 0x17
+SCANCODE_O          equ 0x18
+SCANCODE_P          equ 0x19
+SCANCODE_LBRACKET   equ 0x1A
+SCANCODE_RBRACKET   equ 0x1B
+SCANCODE_ENTER      equ 0x1C
+
+; Row 3 - ASDF row
+SCANCODE_LCTRL      equ 0x1D
+SCANCODE_F          equ 0x21
+SCANCODE_G          equ 0x22
+SCANCODE_H          equ 0x23
+SCANCODE_J          equ 0x24
+SCANCODE_K          equ 0x25
+SCANCODE_L          equ 0x26
+SCANCODE_SEMICOLON  equ 0x27
+SCANCODE_QUOTE      equ 0x28
+SCANCODE_BACKTICK   equ 0x29
+
+; Row 4 - ZXCV row
+SCANCODE_LSHIFT     equ 0x2A
+SCANCODE_BACKSLASH  equ 0x2B
+SCANCODE_Z          equ 0x2C
+SCANCODE_X          equ 0x2D
+SCANCODE_C          equ 0x2E
+SCANCODE_V          equ 0x2F
+SCANCODE_B          equ 0x30
+SCANCODE_N          equ 0x31
+SCANCODE_M          equ 0x32
+SCANCODE_COMMA      equ 0x33
+SCANCODE_PERIOD     equ 0x34
+SCANCODE_SLASH      equ 0x35
+SCANCODE_RSHIFT     equ 0x36
 
 SCANCODE_W          equ 0x11
 SCANCODE_A          equ 0x1E
@@ -52,6 +91,8 @@ process_scancode:
     je .tetris_input
     cmp byte [is_pong], 1
     je .pong_input
+    cmp byte [is_debug], 1
+    je .debug_input
     ; ---- SNAKE/MENU INPUT ----
     
     ; Check if it's a break code (key release - bit 7 set)
@@ -120,6 +161,13 @@ process_scancode:
 .menu_choice_6: 	
     mov byte [menu_choice], 6
 	jmp .done
+
+
+.debug_input:
+	call debug_input
+	
+
+
 ; ============================================================================
 ; TETRIS INPUT HANDLING
 ; ============================================================================
@@ -309,6 +357,95 @@ process_scancode:
     popad
     ret
 
+
+; ============================================================================
+; DEBUG INPUT HANDLING
+; ============================================================================
+debug_input:
+	pushad
+;	cmp al, SCANCODE_0
+;	je .C0
+	cmp al, SCANCODE_1
+	je .C1
+	cmp al, SCANCODE_2
+	je .C2
+	cmp al, SCANCODE_3
+	je .C3
+	cmp al, SCANCODE_4
+	je .C4
+	cmp al, SCANCODE_5
+	je .C5
+	cmp al, SCANCODE_6
+	je .C6
+	cmp al, SCANCODE_7
+	je .C7
+	cmp al, SCANCODE_8
+	je .C8
+	cmp al, SCANCODE_9
+	je .C9
+	
+	cmp al, SCANCODE_Q
+	je .up
+	cmp al, SCANCODE_W
+	je .stop
+	cmp al, SCANCODE_E
+	je .down
+	;cmp al, SCANCODE_R
+	;cmp al, SCANCODE_T
+	;cmp al, SCANCODE_Y
+	;cmp al, SCANCODE_U
+	cmp al, SCANCODE_I
+	je .shorter
+	cmp al, SCANCODE_O
+	je .longer
+	;cmp al, SCANCODE_P
+	
+	jmp .done
+.shorter:
+	dec dword [length]
+	jmp .done
+.longer:
+	inc dword [length]
+	jmp .done
+.stop:
+	mov byte [song], 0
+	jmp .done
+.up:
+	add dword [freq], 10
+	jmp .done
+.down:
+	sub dword [freq], 10
+	jmp .done
+.C1:
+	mov dword [freq], 31
+	jmp .done
+.C2:
+	mov dword [freq], 61
+	jmp .done
+.C3:
+	mov dword [freq], 123
+	jmp .done
+.C4:
+	mov dword [freq], 249
+	jmp .done
+.C5:
+	mov dword [freq], 498
+	jmp .done
+.C6:
+	mov dword [freq], 987
+	jmp .done
+.C7:
+	mov dword [freq], 1975
+	jmp .done
+.C8:
+	mov dword [freq], 3951
+	jmp .done
+.C9:
+	mov dword [freq], 7902
+	jmp .done
+.done:
+    popad
+    ret
 ; ============================================================================
 ; get_direction_delta: Get X and Y delta based on current direction
 ; Output: EAX = delta_x, EBX = delta_y
@@ -359,9 +496,10 @@ last_scancode       db 0
 game_running        db 1
 menu_choice         db 0
 is_tetris           db 0
-is_pong 			db 0
+is_pong 				db 0
+is_debug			    db 0
 s_pressed           db 0
 a_pressed			db 0
 d_pressed			db 0
-left_pressed		db 0
+left_pressed	     	db 0
 right_pressed		db 0
