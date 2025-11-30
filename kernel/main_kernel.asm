@@ -19,7 +19,32 @@ kernel_entry:
     mov dl, 100
     call mode13_print_string
     
-    mov byte [menu_choice], 0
+    mov esi, snake
+    mov eax, 30
+    mov ebx, 90
+    mov dl, 1
+    call mode13_print_string
+
+    mov esi, TETRIS
+    add ebx, 10
+    mov dl, 2
+    call mode13_print_string
+    
+    mov esi, GOF
+    add ebx, 10
+    mov dl, 3
+    call mode13_print_string
+    
+    mov esi, PONG
+    add ebx, 10
+    mov dl, 4
+    call mode13_print_string
+    
+    mov esi, DEBUG
+    add ebx, 10
+    mov dl, 5
+    call mode13_print_string
+    mov byte [menu_choice], 0xff
 
 .wait_for_choice:
     hlt                              ; Wait for keyboard interrupt
@@ -29,15 +54,20 @@ kernel_entry:
     cmp al, 2
     je .tetris
     cmp al, 3
-    je .test
-    cmp al, 4
     je .gof
-    cmp al, 5
+    cmp al, 4
     je .pong
-    jmp .wait_for_choice             ; Keep waiting if 0
+;    cmp al, 5
+;    je .cli
+    cmp al, 0
+    je .test
+ 	jmp .wait_for_choice             ; Keep waiting 
 .pong:
 	call pong
 	jmp .pong
+;.cli:
+;	call terminal
+;	jmp .cli
 .gof:
 	call gameoflife
 	jmp .gof
@@ -631,24 +661,7 @@ keyboard_handler:
     popad
     iret
 
-%if 0
-so it seems that with this if 0 statement, I can create a conditional block that never gets evaluated and therefor create a multiline comment in assembly, imma abuse the hell out of that.
-; =============================================================================
-; Actual issues found
-; =============================================================================
-apple_race:
-	There was a nasty race condition inside of the apple spawn logic and body redraw logic.
-	When an apple generates the pseudorandom coordinates for the next spawnpoint, it may overlap with the snakes body
-out-of-bounds:
-	there was an oob with the apple respawn logic where I forgot that now with the 13h display I had to recalculate the width of where apples are allowed to spawn and they just spawned outside of the border and made them "despawn"
 
-second_apple_race:
-	there was ANOTHER apple race where sure I checked if there was a body but I didnt check for the potential of soon-to-be deleted tail, dont ask how, I dont understand it either but it should be gone (hopefully)
-
-direction_based_race:
-	theres a check that prevents 180 degree turns and it works, yet if one is able to turn down (or up) and then the opposite direction, one can make a 180 degree turn in one frame. Have still yet to figure out an efficient method to patch this without fucking up the fps
-	
-%endif
 ; ============================================================================
 ; Include Drivers
 ; ============================================================================
@@ -657,10 +670,18 @@ direction_based_race:
 %include "vga/13h_vga.asm"
 %include "keyboard/keyboard_driver.asm"
 %include "timer/timer_driver.asm"
+%include "audio/audio_driver.asm"
+
+; ============================================================================
+; Include Kernels
+; ============================================================================
+
 %include "kernel/tetris.asm"
 %include "kernel/test.asm"
 %include "kernel/gameoflife.asm"
 %include "kernel/pong.asm"
+;%include "kernel/terminal.asm"
+
 ; ============================================================================
 ; Data Section
 ; ============================================================================
@@ -685,9 +706,12 @@ apple_count   dd 0               ; Changed to dword for consistency
 temp_spawn_x  dd 0 		
 temp_spawn_y  dd 0		 
 paused 	      db 'PAUSED', 0
-menu		  db 'SNAKE OR TETRIS', 0
-snake		  db 'SNAKE', 0
-
+menu		  	  db 'CHOOSE A GAME', 0
+snake		  db '1 SNAKE', 0
+TETRIS		  db '2 TETRIS', 0
+GOF       	  db '3 GAMEOFLIFE', 0
+PONG		 	  db '4 PONG', 0
+DEBUG		  db '0 DEBUG', 0
 
 ; IDT structures
 idt_desc:
