@@ -273,8 +273,8 @@ mode13_fill_rect:
 mode13_pong:
 	push eax
 	push ebx
-	mov ecx, 2
-	mov edx, 2
+	mov ecx, 4
+	mov edx, 4
 	call mode13_fill_rect
 	pop eax
 	pop ebx
@@ -475,7 +475,6 @@ mode13_rgb_rect:
     ret
 ; ----------------------------------------------------------------------------
 ; draw_border: Draws snake border
-; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = starting color
 ; ----------------------------------------------------------------------------
 draw_border:
     pushad
