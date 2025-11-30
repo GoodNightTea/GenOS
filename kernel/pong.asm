@@ -2,18 +2,16 @@ pong:
     mov esp, 0x7000
     mov al, 0
     call mode13_clear_screen
-	mov eax, 50
-	mov ebx, 50
-	mov ecx, 2
-	mov esi, 15
-	call mode13_pong
-	call draw_paddle.p1
 	call draw_paddle.p2
+	call draw_paddle.p1
 
-.player_loop:
+
+.main_loop:
     mov eax, 2
     call wait_frames
-    
+	call ball_logic
+	
+.player_loop:
     ; Check player 1 keys
     cmp byte [a_pressed], 1
     jne .check_d
@@ -67,12 +65,100 @@ pong:
     call draw_paddle.p2
 
 .player_loop_end:
-	jmp .player_loop
+	jmp .main_loop
 
+ball_logic:
+	; erase old blal
+	mov eax, dword [ball_x]
+	mov ebx, dword [ball_y]
+	mov ecx, 2
+	mov esi, 0
+	call mode13_pong
 
+.wall_check:
+	mov ebx, dword [ball_x]
+	add ebx, dword [ball_dx]
+	cmp ebx, 2
+	jle .negate
+	cmp ebx, 318
+	jge .negate
 
+.collision_check:
+
+    mov ebx, dword [ball_y]
+    add ebx, dword [ball_dy] 
+    
+    mov ecx, dword [p1_y]
+    add ecx, 5  
+    cmp ebx, ecx
+    jge .check_p2  
+    
+    mov ecx, dword [p1_y]
+    cmp ebx, ecx
+    jl .check_p2  
+    
+
+    mov eax, dword [ball_x]
+    add eax, dword [ball_dx]
+    
+    mov ecx, dword [p1_x]
+    add ecx, 50  
+    cmp eax, ecx
+    jge .check_p2
+    
+    mov ecx, dword [p1_x]
+    cmp eax, ecx
+    jl .check_p2
+
+    neg dword [ball_dy]
+    jmp .update_position  ; skip p2 
+.negate:
+	neg dword [ball_dx]
+	jmp .update_position
+.check_p2:
+
+    mov ebx, dword [ball_y]
+    add ebx, dword [ball_dy]  
+    add ebx, 2  
+    
+    mov ecx, dword [p2_y]
+    cmp ebx, ecx
+    jl .update_position  
+    
+    mov ecx, dword [p2_y]
+    add ecx, 5
+    cmp ebx, ecx
+    jge .update_position 
+    
+
+    mov eax, dword [ball_x]
+    add eax, dword [ball_dx]
+    
+    mov ecx, dword [p2_x]
+    add ecx, 50
+    cmp eax, ecx
+    jge .update_position
+    
+    mov ecx, dword [p2_x]
+    cmp eax, ecx
+    jl .update_position
+    
+
+    neg dword [ball_dy]
+    
+.update_position:
+	mov eax, dword [ball_x]
+	add eax, dword [ball_dx]	
+	mov dword [ball_x], eax
+	mov ebx, dword [ball_y]
+	add ebx, dword [ball_dy]
+	mov dword [ball_y], ebx
+	mov esi, 15
+	call mode13_pong
+	ret
 draw_paddle:
 .p1:
+	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
     mov eax, [p1_x]
     mov ebx, [p1_y]
     mov ecx, 50
@@ -89,10 +175,15 @@ draw_paddle:
     mov esi, 15
     call mode13_fill_rect
 	ret
-    
+
 player		db 0
 
 p1_x		dd 160
 p1_y		dd 5
 p2_x		dd 160
 p2_y		dd 175
+
+ball_x		dd 100
+ball_y		dd 100
+ball_dx		dd 1	    ; baller speed
+ball_dy		dd 1			; 
