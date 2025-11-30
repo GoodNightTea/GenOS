@@ -273,23 +273,9 @@ mode13_fill_rect:
 mode13_pong:
 	push eax
 	push ebx
-	mov edx, ecx
+	mov ecx, 2
+	mov edx, 2
 	call mode13_fill_rect
-	add ebx, ecx
-	call mode13_fill_rect
-	pop ebx
-	push ebx
-	sub ebx, ecx
-	call mode13_fill_rect
-	pop ebx
-	push ebx
-	add eax, ecx
-	call mode13_fill_rect
-	pop eax
-	push eax
-	sub eax, ecx
-	call mode13_fill_rect
-.done:
 	pop eax
 	pop ebx
     ret
