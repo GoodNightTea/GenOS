@@ -3,16 +3,17 @@
 ; ============================================================================
 
 ; Scancode definitions (make codes - when key is pressed)
-SCANCODE_1          equ 0x02 ; snake
-SCANCODE_2          equ 0x03 ; tetris
-SCANCODE_3          equ 0x04 ; VGA test
-SCANCODE_4          equ 0x05 ; game of life
-SCANCODE_5          equ 0x06 ; pong
-SCANCODE_6          equ 0x07
+SCANCODE_0          equ 0x0B ; DEBUG
+SCANCODE_1          equ 0x02 ; SNAKE
+SCANCODE_2          equ 0x03 ; TETRIS
+SCANCODE_3          equ 0x04 ; GOF
+SCANCODE_4          equ 0x05 ; PONG
+SCANCODE_5          equ 0x06 ; CLI
+SCANCODE_6          equ 0x07 
 SCANCODE_7          equ 0x08
 SCANCODE_8          equ 0x09
 SCANCODE_9          equ 0x0A
-SCANCODE_0          equ 0x0B
+
 
 SCANCODE_W          equ 0x11
 SCANCODE_A          equ 0x1E
@@ -58,7 +59,8 @@ process_scancode:
     jnz .done
     
 
-    
+    cmp al, SCANCODE_0
+    je .menu_choice_0
     cmp al, SCANCODE_1
     je .menu_choice_1
     cmp al, SCANCODE_2
@@ -69,7 +71,8 @@ process_scancode:
     je .menu_choice_4
     cmp al, SCANCODE_5
     je .menu_choice_5
-
+    cmp al, SCANCODE_6
+    je .menu_choice_6
     ; Check for arrow keys or WASD
     cmp al, SCANCODE_RIGHT
     je .set_right
@@ -89,11 +92,34 @@ process_scancode:
     je .set_down
     cmp al, SCANCODE_S
     je .set_down
-    
-
-    
+    jmp .done
+; ============================================================================
+; MENU CHOICES
+; ============================================================================
+.menu_choice_0: 	
+    mov byte [menu_choice], 0
+	jmp .done
+.menu_choice_1:
+    mov byte [menu_choice], 1
+    jmp .done
+.menu_choice_2:
+    mov byte [is_tetris], 1
+    mov byte [menu_choice], 2
     jmp .done
 
+.menu_choice_3:
+    mov byte [menu_choice], 3
+    jmp .done
+.menu_choice_4:
+    mov byte [is_pong], 1 	
+    mov byte [menu_choice], 4
+    jmp .done
+.menu_choice_5:
+    mov byte [menu_choice], 5
+	jmp .done
+.menu_choice_6: 	
+    mov byte [menu_choice], 6
+	jmp .done
 ; ============================================================================
 ; TETRIS INPUT HANDLING
 ; ============================================================================
@@ -212,23 +238,11 @@ process_scancode:
     jmp .done
 
 .released_RIGHT:
-    mov eax, 0
-    mov ebx, 0
-    mov ecx, 10
-    mov edx, 10
-    mov esi, 4  ; Red square as debug marker
-    call mode13_fill_rect
 	cmp byte [right_pressed], 0
 	je .done
 	mov byte [right_pressed], 0
     jmp .done
 .pressed_RIGHT:
-    mov eax, 0
-    mov ebx, 0
-    mov ecx, 10
-    mov edx, 10
-    mov esi, 15  ; Red square as debug marker
-    call mode13_fill_rect
 	cmp byte [right_pressed], 1
 	je .done
 	mov byte [right_pressed], 1
@@ -244,28 +258,7 @@ process_scancode:
 	mov byte [left_pressed], 1
     jmp .done
 
-; ============================================================================
-; MENU CHOICES
-; ============================================================================
-.menu_choice_1:
-    mov byte [menu_choice], 1
-    jmp .done
-    
-.menu_choice_2:
-    mov byte [is_tetris], 1
-    mov byte [menu_choice], 2
-    jmp .done
 
-.menu_choice_3:
-    mov byte [menu_choice], 3
-    jmp .done
-.menu_choice_4:
-    mov byte [menu_choice], 4
-    jmp .done
-.menu_choice_5:
-    mov byte [is_pong], 1 	
-    mov byte [menu_choice], 5
-	jmp .done
 ; ============================================================================
 ; TRIPLE FAULT (reset)
 ; ============================================================================
