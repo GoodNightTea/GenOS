@@ -77,6 +77,7 @@ kernel_entry:
 	jmp .gof
 .test:
 	call test
+	mov byte [is_debug], 1
 	jmp .test	
 .snake:
 	call snake
