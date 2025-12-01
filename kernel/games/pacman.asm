@@ -14,7 +14,6 @@ pacman:
 	mov ecx, 60
 	mov edx, 10
 	call pacman_pipe_h
-	call
 .hlt:
 	hlt
 	mov eax, 10000
