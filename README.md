@@ -123,38 +123,52 @@ Meant as the Software stack for a graduation project that involved creating a Ga
 ## Project Structure
 ```
 .
-├── boot/
-│   ├── first/
-│   │   └── boot.asm              # 512-byte boot sector
-│   └── second/
-│       └── stage2.asm            # Protected mode transition
-├── kernel/
-│   ├── main_kernel.asm           # System Init + Game Selection + (conditional) Snake Game loop 
-│   ├── tetris.asm                # Tetris game loop 
-│   ├── test.asm                  # VGA Color display demonstration 
-│   ├── pong.asm                  # Pong
-│   ├── gameoflife.asm            # Game of life simulation 
-│   ├── keyboard/
-│   │   └── keyboard_driver.asm   # Scancode processing
-│   ├── timer/
-│   │   └── timer_driver.asm      # PIT configuration
-│   ├── fonts/
-│   │   └── font1.asm             # The most beautiful fon ever
-│   └── vga/
-│       └── 13h_vga.asm           # VGA driver
+├── boot
+│   ├── first
+│   │   └── boot.asm
+│   └── second
+│       └── stage2.asm
+├── build
+│   ├── boot.bin
+│   ├── genos.img
+│   ├── kernel.bin
+│   └── stage2.bin
+├── kernel
+│   ├── drivers
+│   │   ├── audio
+│   │   │   └── audio_driver.asm
+│   │   ├── fonts
+│   │   │   └── font1.asm
+│   │   ├── keyboard
+│   │   │   └── keyboard_driver.asm
+│   │   ├── timer
+│   │   │   └── timer_driver.asm
+│   │   └── vga
+│   │       └── 13h_vga.asm
+│   ├── games
+│   │   ├── gameoflife.asm
+│   │   ├── global_functions.asm
+│   │   ├── pacman.asm
+│   │   ├── pong.asm
+│   │   ├── snake.asm
+│   │   ├── test.asm
+│   │   └── tetris.asm
+│   └── main_kernel.asm
 └── tools
-    └── dynamic_builder.sh        # Image formater
+    └── builder.sh
+
 ```
 ## Issues
+- **Single-threaded**: No multitasking or process management 
 ### Snake:
 - **Max snake length**: 100 segments before circular buffer wraparound
 - **No self-collision**: Snake can pass through itself (feature, enjoy it)
-- **Single-threaded**: No multitasking or process management 
 - **Race-Conditions**: Rotation issue and potential apple collision/spawning issue (unconfirmed)
 ### Pong:
-- **No Movement**: The ball is still static
-- **No Memory Management**: No memory storage of current paddle and ball position for collision checks
-- **No Pause String**: yea pretty much says it, no hlt
+- **Ball Race**: The ball can phase into the paddle when at certain speeds or when going in from the side, still gets detected as a collision but can eat through the hud
+### Pacman:
+- **Missing everything**: unfinished
+
 
 ## Contact
 **Discord**: GoodNightTea
