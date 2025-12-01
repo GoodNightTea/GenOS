@@ -1,5 +1,8 @@
 test:
     mov esp, 0x7000
+    mov dword [freq], 600
+    cmp byte [music], 1
+    je .music
 .display:
 	; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
 	cmp dword [countd], 21
@@ -32,9 +35,30 @@ test:
 	mov eax, 1000
 	call wait_frames
 	jmp .hlt
+.music:
+	mov al, 1
+	call mode13_clear_screen
+.loop:
+	
+	; wait for input
+
+	call play_tone
+	mov eax, 1
+	call wait_frames
+	call stop_tone
+	mov eax, 1
+	call wait_frames
+	hlt
+	hlt
+	mov eax, dword [freq]
+	jmp .loop
+	
+	
 
 x 		dd 0
 y 		dd 0
 colord   dd 0
 countd  dd 0
 rowd 	dd 0
+music 	db 1
+freq	dd 0
