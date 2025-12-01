@@ -416,28 +416,31 @@ pacman_pipe_h:
 ; pacman_pipe_h: Draw a vertical pipe 
 ; Input: EAX = x, EBX = y, ecx = rotation (0,1), (1,0) 
 ; ----------------------------------------------------------------------------
+
+    
     
 pacman_90:
     pushad
     ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
     ; cmp ecx for rotation
     ; vertical - horizontal (0,1)
-    ; Input: EAX = x, EBX = y, CL = color (0-255)
     push ecx
-    mov ecx, 5
+
+    mov ecx, 2
     mov edx, 2
     mov esi, 1
     call mode13_fill_rect
-    add eax, 5
-    mov cl, 1
-    call mode13_set_pixel
-    add eax, 1
-    add ebx, 1
-    call mode13_set_pixel
-    add ebx, edx
-    mov edx, 2
-    mov esi, 1
-    call mode13_fill_rect
+    
+    add eax, 2
+    add ebx, 2
+    call mode13_fill_rect   
+    add eax, 2
+    add ebx, 2
+    call mode13_fill_rect   
+    add eax, 2
+    add ebx, 2
+    call mode13_fill_rect   
+    
 	pop ecx
 .done:
     popad
