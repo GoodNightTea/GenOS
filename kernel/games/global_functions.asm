@@ -74,7 +74,21 @@ setup_idt:
     
     popad
     ret
-
+keyboard_handler:
+    pushad
+    
+    ; Read scancode from keyboard controller
+    in al, 0x60
+    
+    ; Process the scancode
+    call process_scancode
+    
+    ; Send EOI to PIC
+    mov al, 0x20
+    out 0x20, al
+    
+    popad
+    iret
 
 xorshift32:
     push ebx
@@ -99,3 +113,4 @@ xorshift32:
 
 ;==========GLOBAL STRINGS/VARIABLES======
 paused 	      db 'PAUSED', 0
+	
