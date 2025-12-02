@@ -237,29 +237,28 @@ mode13_fill_rect:
     mov [m13_rect_height], edx
     mov [m13_rect_color], esi
     
-    xor edi, edi               ; Row counter
+    ; Calculate starting address: y * 320 + x
+    mov eax, ebx               ; y
+    imul eax, MODE13_WIDTH     ; y * 320
+    add eax, [m13_rect_x]      ; + x (assuming you meant to use parameter not variable)
+    add eax, MODE13_BUFFER     ; + base address
+    mov edi, eax               ; EDI = starting address
+    
+	mov eax, esi
+	and eax, 0xFF  ; mask to get just the low byte
+    
+    xor ebx, ebx               ; row counter
 .row_loop:
-    cmp edi, [m13_rect_height]
+    cmp ebx, edx               ; compare with height
     jge .done
-    ; Calculate row start: (y + row) * 320 + x
-    mov eax, [m13_rect_y]
-    add eax, edi
-    imul eax, MODE13_WIDTH
-    add eax, [m13_rect_x]
     
-    push edi
-    mov edi, MODE13_BUFFER
-    add edi, eax
-    
-    ; Fill row
-    mov ecx, [m13_rect_width]
-    mov al, byte [m13_rect_color]
-.col_loop:
-    stosb
-    loop .col_loop
-    
+    push edi                   ; save row start address
+    mov ecx, [m13_rect_width]  ; or just ECX if width is in ECX param
+    rep stosb                  ; fill entire row in one go
     pop edi
-    inc edi
+    
+    add edi, MODE13_WIDTH      ; move to next scanline
+    inc ebx
     jmp .row_loop
     
 .done:
@@ -377,12 +376,12 @@ pacman_pipe_v:
     pushad
     ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
     push ecx
-    mov ecx, 2
+    mov ecx, 1
     mov esi, 1
     call mode13_fill_rect
     pop ecx
     add eax, ecx
-    mov ecx, 2
+    mov ecx, 1
     mov esi, 1
     call mode13_fill_rect
 
@@ -399,12 +398,12 @@ pacman_pipe_h:
     pushad
     ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
     push edx
-    mov edx, 2
+    mov edx, 1
     mov esi, 1
     call mode13_fill_rect
     pop edx
     add ebx, edx
-    mov edx, 2
+    mov edx, 1
     mov esi, 1
     call mode13_fill_rect
 
@@ -413,36 +412,190 @@ pacman_pipe_h:
     ret
 
 ; ----------------------------------------------------------------------------
-; pacman_pipe_h: Draw a vertical pipe 
-; Input: EAX = x, EBX = y, ecx = rotation (0,1), (1,0) 
+; frame: draws around 320x200
 ; ----------------------------------------------------------------------------
+mode13_frame:
+	mov esi, 15
+	
+	mov eax, 0
+	mov ebx, 0
+	mov ecx, 320
+	mov edx, 1
+	call mode13_fill_rect
+	mov eax, 0
+	mov ebx, 0
+	mov ecx, 1
+	mov edx, 200
+	call mode13_fill_rect
+	mov eax, 0
+	mov ebx, 199
+	mov ecx, 320
+	mov edx, 1
+	call mode13_fill_rect
+	mov eax, 319
+	mov ebx, 0
+	mov ecx, 1
+	mov edx, 200
+	call mode13_fill_rect
+
+	ret
+    
 
     
-    
-pacman_90:
-    pushad
+pacman_270:
+	pushad    
     ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
-    ; cmp ecx for rotation
-    ; vertical - horizontal (0,1)
-    push ecx
+    ; fuck man I have never written such sloppy code but fuck I hate circles
+    ; yes this is inefficient, yes it is bad but it works. "Talk is cheap, send patches."
+	sub eax, 3
+	mov ecx, 4
+	mov edx, 1
+	mov esi, 1
+	call mode13_fill_rect
+	sub eax, 3
+	add ebx, 1
+	mov ecx, 3
+	mov esi, 1
+	call mode13_fill_rect
+	sub eax, 2
+	add ebx, 1
+	mov ecx, 2
+	call mode13_fill_rect
+	push edi
+	mov edi, 4
+.corner:
+	sub eax, 1
+	add ebx, 1
+	mov ecx, 1
+	call mode13_fill_rect   
+	dec edi
+	jnz .corner
+.continue:
+	pop edi
+	sub eax, 1
+	add ebx, 1
+	mov ecx, 1
+	mov edx, 2
+	call mode13_fill_rect   
+	sub eax, 1
+	add ebx, 2
+	mov edx, 3
+	mov ecx, 1
+	call mode13_fill_rect   
+	sub eax, 1
+	add ebx, 3
+	mov edx, 4
+	call mode13_fill_rect   
+	popad
+	
 
-    mov ecx, 2
+.inner_arc:
+	pushad
+	sub eax, 2
+	add ebx, 5
+	mov ecx, 4
+	mov edx, 1
+	call mode13_fill_rect
+	sub eax, 3
+	add ebx, 1
+	mov ecx, 3
+	mov edx, 1
+	call mode13_fill_rect
+	push edi
+	mov edi, 3
+.corner2:
+	sub eax, 1
+	add ebx, 1
+	mov ecx, 1
+	call mode13_fill_rect
+	dec edi
+	jnz .corner2
+	pop edi
+	sub eax, 1
+	add ebx, 1
+	mov edx, 3
+	mov ecx, 1
+	call mode13_fill_rect
+	sub eax, 1
+	add ebx, 3
+	mov edx, 4
+	mov ecx, 1
+	call mode13_fill_rect
+    popad
+    	ret
+
+pacman_90:
+	pushad
+	mov ecx, 4
+	mov edx, 1
+	mov esi, 1
+	call mode13_fill_rect
+	add eax, 4
+	add ebx, 1
+	mov ecx, 3
+	mov esi, 1
+	call mode13_fill_rect
+	add eax, 3
+	add ebx, 1
+	mov ecx, 2
+	call mode13_fill_rect   
+	push edi
+	mov edi, 4
+	add eax, 1
+	mov ecx, 1
+.corner:
+	add eax, 1
+	add ebx, 1	
+	call mode13_fill_rect
+	dec edi
+	jnz .corner
+	pop edi
+	
+	add eax, 1
+    add ebx, 1
     mov edx, 2
-    mov esi, 1
-    call mode13_fill_rect
-    
-    add eax, 2
-    add ebx, 2
-    call mode13_fill_rect   
-    add eax, 2
-    add ebx, 2
-    call mode13_fill_rect   
-    add eax, 2
-    add ebx, 2
-    call mode13_fill_rect   
-    
-	pop ecx
-.done:
+	call mode13_fill_rect   
+	add ebx, 2
+	add eax, 1
+	mov edx, 3
+	call mode13_fill_rect   
+    add eax, 1
+    add ebx, 3
+    mov edx, 4
+	call mode13_fill_rect   
+	popad
+.inner_arc:
+	pushad
+	
+	add ebx, 5
+	mov ecx, 3
+	mov edx, 1
+	call mode13_fill_rect
+	add eax, 3
+	add ebx, 1
+	mov edx, 1
+	call mode13_fill_rect
+	mov ecx, 1
+	mov edx, 1
+	push edi
+	mov edi, 3
+	add eax, 2
+.corner2:
+	add eax, 1
+	add ebx, 1
+	call mode13_fill_rect
+	dec edi
+	jnz .corner2
+	pop edi
+	
+	add eax, 1
+	add ebx, 1
+	mov ecx, 1
+	mov edx, 3
+	call mode13_fill_rect
+	add eax, 1
+	add ebx, 3
+	call mode13_fill_rect
     popad
     ret
 
@@ -458,9 +611,9 @@ m13_rect_color:  dd 0
 
 
 color			 dd 0
-string_x dd 0
-string_y dd 0
-string_color db 0
+string_x 		 dd 0
+string_y 		 dd 0
+string_color 	 db 0
 
 init_pics:
     ; ICW1: Initialize both PICs
