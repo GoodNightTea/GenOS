@@ -114,7 +114,7 @@ pong:
     cmp byte [right_pressed], 1
     jne .player_loop_end
     mov eax, [p2_x]
-    add eax, 55
+    add eax, 50
     cmp eax, 295
     jge .player_loop_end
     ; erase 
@@ -132,11 +132,9 @@ pong:
 .paused:
 	call g_paused
 	jmp .main_loop
-
-
 	
 ball_logic:
-	cmp dword [bounces], 3
+	cmp dword [bounces], 1
 	jge .speed_up
 
 	; erase old blal
@@ -165,9 +163,9 @@ ball_logic:
 
     mov ebx, dword [ball_y]
     add ebx, dword [ball_dy] 
-    
+    sub ebx, 1
     mov ecx, dword [p1_y]
-    add ecx, 5  
+    add ecx, 5
     cmp ebx, ecx
     jge .check_p2  
     
@@ -189,7 +187,7 @@ ball_logic:
     jl .check_p2
 
     neg dword [ball_dy]
-    	mov eax, 720				; player 1 sound
+	mov eax, 720				; player 1 sound
 	call play_tone
 	mov eax, 1
 	call wait_frames
@@ -201,7 +199,7 @@ ball_logic:
 
     mov ebx, dword [ball_y]
     add ebx, dword [ball_dy]  
-    add ebx, 3
+    add ebx, 4
     
     mov ecx, dword [p2_y]
     cmp ebx, ecx
@@ -227,7 +225,7 @@ ball_logic:
     
 
     neg dword [ball_dy]
-    	mov eax, 800
+	mov eax, 800
 	call play_tone
 	mov eax, 1
 	call wait_frames
@@ -316,19 +314,30 @@ change_speed:
     mov eax, dword [ball_dx]
     test eax, eax
     js .speed_dx_neg
+    cmp dword [ball_dx], 3
+    jge .done
+
     inc dword [ball_dx]
     jmp .speed_check_dy
 .speed_dx_neg:
+    cmp dword [ball_dx], -3
+    jge .done
+
     dec dword [ball_dx]
-    
 .speed_check_dy:
 
     mov eax, dword [ball_dy]
     test eax, eax
     js .speed_dy_neg
+    cmp dword [ball_dy], 3
+    jge .done
     inc dword [ball_dy]
+
     jmp .done
 .speed_dy_neg:
+    cmp dword [ball_dy], -3
+    jge .done
+
     dec dword [ball_dy]
     jmp .done
     
