@@ -417,28 +417,28 @@ process_scancode:
 	mov dword [freq], 31
 	jmp .done
 .C2:
-	mov dword [freq], 61
+	mov dword [freq], 110
 	jmp .done
 .C3:
-	mov dword [freq], 123
+	mov dword [freq], 220
 	jmp .done
 .C4:
-	mov dword [freq], 249
+	mov dword [freq], 440
 	jmp .done
 .C5:
-	mov dword [freq], 498
+	mov dword [freq], 880
 	jmp .done
 .C6:
-	mov dword [freq], 987
+	mov dword [freq], 1760
 	jmp .done
 .C7:
-	mov dword [freq], 1975
+	mov dword [freq], 3520
 	jmp .done
 .C8:
-	mov dword [freq], 3951
+	mov dword [freq], 7040
 	jmp .done
 .C9:
-	mov dword [freq], 7902
+	mov dword [freq], 140808
 	jmp .done
 
 ; ============================================================================
