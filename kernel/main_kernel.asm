@@ -1,8 +1,8 @@
-
 [BITS 32]
 [ORG 0x100000]
 kernel_entry:
     mov esp, 0x7C00
+
     cli
     call setup_idt
     call setup_timer_idt
@@ -10,6 +10,8 @@ kernel_entry:
 
     call init_timer
 	sti
+	cmp byte [menu_choice], -1
+	je .entry
     call setup_fdc_idt      
 	call init_fdc
 
@@ -77,24 +79,17 @@ kernel_entry:
 	call mode13_print_string
 
 .done:
-	hlt
-	jmp .done
+	mov eax, 200
+	call wait_frames
+    
 
-sector0_label: db 'SECTOR UNO:', 0
-sector1_label: db 'SECTOR DOS:', 0
-sector2_label: db 'SECTOR TRES:', 0
-read_fail:     db 'FUCK', 0
-    
-    
+.entry:
+	cli
     ; god thats a sloppy fix, can just add an in_game variable but idk im lazy
     mov byte [is_tetris], 0
     mov byte [is_pong], 0  
     mov byte [is_debug], 0
     mov byte [is_cli], 0
-    
-	cmp byte [menu_choice], 0xff
-	je .entry
-.entry:
     mov al, 0
     call mode13_clear_screen
 
@@ -137,7 +132,7 @@ read_fail:     db 'FUCK', 0
     add ebx, 10
     mov dl, 6
     call mode13_print_string
-    mov byte [menu_choice], 0xff
+    mov byte [menu_choice], -1
 
 .wait_for_choice:
 	sti
@@ -215,7 +210,10 @@ read_fail:     db 'FUCK', 0
 ; ============================================================================
 ; Data Section
 ; ============================================================================
-	 
+ sector0_label: db 'UNO:', 0
+sector1_label: db 'DOS:', 0
+sector2_label: db 'TRES:', 0
+read_fail:     db 'FUCK', 0
 
 menu		      db 'CHOOSE A GAME', 0
 SNAKE		  db '1 SNAKE', 0
