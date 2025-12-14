@@ -109,6 +109,36 @@ wait_frames:
     pop ebx
     ret
 
+
+; ============================================================================
+; delay_ms: Millisecond delay using existing timer
+; Input: EAX = milliseconds to delay
+; ============================================================================
+delay_ms:
+    pushad
+    
+    ; Each tick = ~16.67ms (60 Hz)
+    ; Convert ms to ticks: ticks = (ms * 60) / 1000 = (ms * 3) / 50
+    
+    mov ebx, eax
+    imul ebx, 3
+    mov eax, ebx
+    xor edx, edx
+    mov ecx, 50
+    div ecx                     ; EAX = ticks
+    
+    ; Make sure we wait at least 1 tick
+    cmp eax, 0
+    jne .wait
+    mov eax, 1
+    
+.wait:
+    call wait_frames
+    
+    popad
+    ret
+    
+    
 ; ============================================================================
 ; get_ticks: Get current timer tick count
 ; Output: EAX = current tick count
