@@ -1,4 +1,4 @@
-; ============================================================================
+	; ============================================================================
 ; Mode 13h VGA Driver (320x200, 256 colors)
 ; ============================================================================
 
@@ -441,7 +441,7 @@ mode13_frame:
 	ret
     
 
-    
+; down right 
 pacman_270:
 	pushad    
     ; Input: EAX = x, EBX = y, ECX = width, EDX = height, ESI = color
@@ -523,7 +523,7 @@ pacman_270:
 	call mode13_fill_rect
     popad
     	ret
-
+; left down
 pacman_90:
 	pushad
 	mov ecx, 4
@@ -599,6 +599,341 @@ pacman_90:
     popad
     ret
 
+; down left, right
+
+pacman_180:
+	pushad
+	mov ecx, 1
+	mov edx, 4
+	mov esi, 1
+	call mode13_fill_rect
+	add eax, 1
+	add ebx, 4
+	mov ecx, 1
+	sub edx, 1
+	mov esi, 1
+	call mode13_fill_rect
+	add eax, 1
+	add ebx, 3
+	mov ecx, 1
+	sub edx, 1
+	call mode13_fill_rect   
+	push edi
+	mov edi, 4
+	add ebx, 1
+	mov ecx, 1
+	mov edx, 1
+.corner:
+	add eax, 1
+	add ebx, 1	
+	mov edx, 1
+	call mode13_fill_rect
+	dec edi
+	jnz .corner
+	
+	pop edi
+	
+	add eax, 1
+    add ebx, 1
+    mov ecx, 2
+	call mode13_fill_rect   
+	add eax, 2
+	add ebx, 1
+	mov ecx, 3
+	call mode13_fill_rect   
+    add eax, 3
+    add ebx, 1
+    mov ecx, 4
+	call mode13_fill_rect   
+	popad
+
+
+.inner_arc:
+	pushad	
+	add eax, 5
+	mov edx, 4
+	mov ecx, 1
+	call mode13_fill_rect
+	add ebx, 3
+	add eax, 1
+	mov edx, 3
+	call mode13_fill_rect
+	mov edx, 1
+	push edi
+	mov edi, 3
+	add ebx, 2
+.corner2:
+	add eax, 1
+	add ebx, 1
+	call mode13_fill_rect
+	dec edi
+	jnz .corner2
+	pop edi
+	add eax, 1
+	add ebx, 1
+	mov ecx, 3
+	mov edx, 1
+	call mode13_fill_rect
+	add eax, 3
+	add ebx, 1
+	mov ecx, 5
+	
+	call mode13_fill_rect
+    popad
+    ret
+    
+
+; down right, left
+pacman_0:
+	pushad
+	mov ecx, 1
+	mov edx, 4
+	mov esi, 1
+	call mode13_fill_rect
+	sub eax, 1
+	add ebx, 4
+	mov ecx, 1
+	sub edx, 1
+	mov esi, 1
+	call mode13_fill_rect
+	sub eax, 1
+	add ebx, 3
+	mov ecx, 1
+	sub edx, 1
+	call mode13_fill_rect   
+	push edi
+	mov edi, 4
+	add ebx, 1
+	mov ecx, 1
+	mov edx, 1
+.corner:
+	sub eax, 1
+	add ebx, 1	
+	mov edx, 1
+	call mode13_fill_rect
+	dec edi
+	jnz .corner
+	pop edi
+	sub eax, 2
+    add ebx, 1
+    mov ecx, 2
+	call mode13_fill_rect   
+	sub eax, 3
+	add ebx, 1
+	mov ecx, 3
+	call mode13_fill_rect   
+    sub eax, 4
+    add ebx, 1
+    mov ecx, 4
+	call mode13_fill_rect
+	popad
+.inner_arc:
+	pushad	
+	sub ebx, 1
+	sub eax, 5
+	mov edx, 4
+	mov ecx, 1
+	call mode13_fill_rect
+	add ebx, 4
+	sub edx, 1
+	sub eax, 1
+	call mode13_fill_rect
+	mov edx, 1
+	push edi
+	mov edi, 3
+	add ebx, 2
+.corner2:
+	sub eax, 1
+	add ebx, 1
+	call mode13_fill_rect
+	dec edi
+	jnz .corner2
+	pop edi
+	sub eax, 3
+	add ebx, 1
+	mov ecx, 3
+	mov edx, 1
+	call mode13_fill_rect
+	sub eax, 3
+	add ebx, 1
+	call mode13_fill_rect
+    popad
+    ret
+
+
+half_circ_down:
+	
+	sub ebx, 2
+	mov edx, 2
+	mov ecx, 1
+	call mode13_fill_rect
+	
+	add eax, 1
+	sub ebx, 2
+	call mode13_fill_rect
+	
+	add eax, 1
+	sub ebx, 1
+	mov ecx, 2
+	mov edx, 1
+	call mode13_fill_rect
+	
+	add eax, 2
+	sub ebx, 1
+	mov ecx, 5
+	call mode13_fill_rect
+	ret
+.quarter2:
+	
+	add eax, 5
+	add ebx, 1
+	mov ecx, 2
+	mov edx, 1
+	call mode13_fill_rect
+	
+	add eax, 2
+	add ebx, 1
+	mov ecx, 1
+	mov edx, 2
+	call mode13_fill_rect
+	
+	add eax, 1
+	add ebx, 2
+	call mode13_fill_rect
+	
+	ret
+	
+	
+half_circ_up:
+	
+	sub ebx, 1
+	mov ecx, 1
+	mov edx, 2
+	call mode13_fill_rect
+	add eax, 1
+	add ebx, 2
+	call mode13_fill_rect
+	add eax, 1
+	add ebx, 2
+	mov ecx, 2
+	mov edx, 1
+	call mode13_fill_rect
+
+	add eax, 2
+	add ebx, 1
+	mov ecx, 3
+	call mode13_fill_rect
+	
+
+	ret
+.quarter2:
+	
+	add eax, 3
+	mov ecx, 2
+	call mode13_fill_rect
+	
+	sub ebx, 1
+	add eax, 2
+	mov ecx, 2
+	call mode13_fill_rect
+	add eax, 2
+	sub ebx, 2
+	mov edx, 2
+	mov ecx, 1
+	call mode13_fill_rect
+	add eax, 1
+	sub ebx, 3
+	mov edx, 3
+	call mode13_fill_rect
+	
+	
+	ret
+	
+	
+  
+  
+    
+longass_cube:
+	pushad
+	
+	mov esi, 1
+	call pacman_270.inner_arc
+	add eax, 31
+	mov esi, 1
+	call pacman_90.inner_arc
+	
+	
+	sub eax, 41
+	add ebx, 16
+	mov edx, 6
+	mov ecx, 51
+	call pacman_pipe_v
+	add eax, 41
+	sub ebx, 16
+	
+	sub eax, 29
+	add ebx, 5
+	mov edx, 27
+	mov ecx, 29
+	call pacman_pipe_h
+	add eax, 28
+	
+	
+	sub eax, 45
+	add ebx, 17
+	mov esi, 1
+	call pacman_180.inner_arc
+	
+	add eax, 61
+	mov esi, 1
+	call pacman_0.inner_arc
+	popad
+	ret
+
+
+smallass_cube:
+	pushad
+	call half_circ_down
+	
+	add eax, 5
+	mov edx, 15
+	mov ecx, 10
+	call pacman_pipe_h
+	
+	add eax, 5
+	call half_circ_down.quarter2
+	
+	sub eax, 22
+	add ebx, 2
+	mov edx, 5
+	mov ecx, 22
+	
+	call pacman_pipe_v
+	
+	; bottom half
+	add ebx, 5
+	call half_circ_up
+	add eax, 10
+	call half_circ_up.quarter2
+	popad
+	ret
+		
+fuckass_circle:
+	pushad
+	mov esi, 1
+	call pacman_270.inner_arc
+	mov esi, 1
+	call pacman_90.inner_arc
+	sub eax, 15
+	add ebx, 17
+	mov esi, 1
+	call pacman_180.inner_arc
+	add eax, 30
+	mov esi, 1
+	call pacman_0.inner_arc
+	popad
+	ret
+	
 ; ============================================================================
 ; DATA SECTION FOR 13h VGA DRIVER
 ; ============================================================================
@@ -615,33 +950,3 @@ string_x 		 dd 0
 string_y 		 dd 0
 string_color 	 db 0
 
-init_pics:
-    ; ICW1: Initialize both PICs
-    mov al, 0x11                ; ICW1: Init + ICW4 needed
-    out 0x20, al                ; Send to PIC1 command port
-    out 0xA0, al                ; Send to PIC2 command port
-    
-    ; ICW2: Set interrupt vector offsets
-    mov al, 0x20                ; PIC1 starts at INT 32 (0x20)
-    out 0x21, al                ; PIC1 data port
-    mov al, 0x28                ; PIC2 starts at INT 40 (0x28)
-    out 0xA1, al                ; PIC2 data port
-    
-    ; ICW3: Setup cascade
-    mov al, 0x04                ; PIC1: slave on IRQ2
-    out 0x21, al
-    mov al, 0x02                ; PIC2: cascade identity
-    out 0xA1, al
-    
-    ; ICW4: Set mode
-    mov al, 0x01                ; 8086 mode
-    out 0x21, al
-    out 0xA1, al
-    
-    ; OCW1 et interrupt masks (enable timer and keyboard)
-    mov al, 0xFC                ; 11111100b - enable IRQ0 (timer) and IRQ1 (keyboard)
-    out 0x21, al                ; Mask for PIC1
-    mov al, 0xFF                ; Mask all on PIC2
-    out 0xA1, al
-    
-    ret
