@@ -82,6 +82,8 @@ process_scancode:
     
     ; Store scancode for debugging
     mov [last_scancode], al
+    cmp al, SCANCODE_SPACE
+    je .escape
     cmp al, SCANCODE_R
     je .triple_fault
     cmp al, SCANCODE_ESC
@@ -93,6 +95,8 @@ process_scancode:
     je .pong_input
     cmp byte [is_debug], 1
     je .debug_input
+    cmp byte [is_cli], 1
+    je .cli_input
     ; ---- SNAKE/MENU INPUT ----
     
     ; Check if it's a break code (key release - bit 7 set)
@@ -160,11 +164,68 @@ process_scancode:
     mov byte [menu_choice], 5
 	jmp .done
 .menu_choice_6: 	
+	mov byte [is_cli], 1
     mov byte [menu_choice], 6
 	jmp .done
 
+.escape:
+    mov byte [menu_choice], 0xff
+	call kernel_entry
+	jmp .done
+; ============================================================================
+; CLI INPUT HANDLER
+; ============================================================================
+.cli_input:
+    test al, 0x80
+    jnz .done
+	cmp al, SCANCODE_Q
+	je .Q
+	cmp al, SCANCODE_W
+	je .W
+	cmp al, SCANCODE_E
+	je .E
+	cmp al, SCANCODE_R
+	je .R
+	cmp al, SCANCODE_T
+	je .T
+	cmp al, SCANCODE_Y
+	je .Y
+	cmp al, SCANCODE_U
+	je .U
+	cmp al, SCANCODE_I
+	je .I
+	cmp al, SCANCODE_O
+	je .O
 
-
+    jmp .done
+.Q:
+	mov byte [input_buffer], 'Q'
+	jmp .done
+.W:
+	mov byte [input_buffer], 'W'
+	jmp .done
+.E:
+	mov byte [input_buffer], 'E'
+	jmp .done
+.R:
+	mov byte [input_buffer], 'R'
+	jmp .done
+.T:
+	mov byte [input_buffer], 'T'
+	jmp .done
+.Y:
+	mov byte [input_buffer], 'Y'
+	jmp .done
+.U:
+	mov byte [input_buffer], 'U'
+	jmp .done
+.I:
+	mov byte [input_buffer], 'I'
+	jmp .done
+.O:
+	mov byte [input_buffer], 'O'
+	jmp .done
+	
 ; ============================================================================
 ; TETRIS INPUT HANDLING
 ; ============================================================================
@@ -382,11 +443,11 @@ process_scancode:
 	je .C9
 	
 	cmp al, SCANCODE_Q
-	je .up
+	je .mq
 	cmp al, SCANCODE_W
-	je .stop
+	je .mw
 	cmp al, SCANCODE_E
-	je .down
+	je .me
 	;cmp al, SCANCODE_R
 	;cmp al, SCANCODE_T
 	;cmp al, SCANCODE_Y
@@ -397,6 +458,16 @@ process_scancode:
 	je .longer
 	;cmp al, SCANCODE_P
 	
+	jmp .done
+.mq:
+	mov dword [freq], 5
+	jmp .done
+.mw:
+	mov dword [freq], 2
+	jmp .done
+.me:
+	mov dword [freq], 4198
+
 	jmp .done
 .shorter:
 	dec dword [length]
@@ -440,6 +511,7 @@ process_scancode:
 .C9:
 	mov dword [freq], 140808
 	jmp .done
+
 
 ; ============================================================================
 ; get_direction_delta: Get X and Y delta based on current direction
@@ -487,10 +559,12 @@ get_direction_delta:
 ; ============================================================================
 
 current_direction   db DIR_RIGHT
+
 last_scancode       db 0
 game_running        db 1
 menu_choice         db 0
 is_tetris           db 0
+is_cli	            db 0
 is_pong 			db 0
 is_debug			db 0
 s_pressed           db 0
