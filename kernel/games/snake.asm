@@ -3,6 +3,7 @@ snake:
     mov esp, 0x7000
     mov al, 0
     call mode13_clear_screen
+
     mov esi, snake
     mov eax, 130
     mov ebx, 5
@@ -145,6 +146,7 @@ snake:
     popad
     
     ; Advance tail index
+
     inc dword [snake_tail]
     mov eax, [snake_tail]
     cmp eax, max_length
@@ -188,6 +190,11 @@ check_apple_collision:
     jne .next_apple
     
 .collision:
+	mov eax, 600
+	call play_tone
+	mov eax, 2
+	call wait_frames
+	call stop_tone
     ; Remove this apple by swapping with last apple
     mov eax, [apple_count]
     dec eax                        ; last valid index
