@@ -3,43 +3,64 @@ terminal:
     mov al, 0
     call mode13_clear_screen
     
-    mov dword [term_x_pos], 10     
-    
+    mov dword [column], 0
+    mov dword [row], 1
+    mov dword [colour], 15
+    ; todo: cursor to see where tf you are 
 .main:
     sti
     hlt                             
     
-
-    cmp byte [input_buffer], 0
+    cmp byte [input_buffer], 0xff
     je .main                       
     
-    
-    mov al, [input_buffer]
-    mov [previous_input], al      
-    
+
     push eax
-    mov eax, [term_x_pos]               
-    mov ebx, 170			           
-    mov dl, 15                      
-    mov esi, input_buffer        
-    call mode13_print_string                  
+    mov eax, dword [column]
+    imul eax, 8
+    mov ebx, dword [row]
+    imul ebx, 8
+    mov ecx, 8
+    mov edx, 8
+    mov esi, 0
+    call mode13_fill_rect
     pop eax
     
-    ; next char
-    add dword [term_x_pos], 8
-    
-	; under construction
-	; cmp byte [input_buffer], 'Q'
 
-    mov byte [input_buffer], 0
+    push eax
+    mov eax, dword [column]
+    imul eax, 8
+    mov ebx, dword [row]
+    imul ebx, 8
+    mov dl, byte [colour]
+    mov esi, input_buffer        
+    call mode13_print_string
+    pop eax
     
+
+    cmp byte [colour], 0
+    je .skip_advance
+    
+
+    inc dword [column]
+    
+.skip_advance:
+
+    mov byte [input_buffer], 0xff
+    mov byte [colour], 15
+    
+    ; Check for line wrap
+    cmp dword [column], 38
+    jge .next_row
+    jmp .main
+    
+.next_row:
+    mov dword [column], 1
+    inc dword [row]
     jmp .main
 
-
 ; Data
-size					dd 0
-filename				db "TSET", 0
-input_buffer:       db 0, 0            
-previous_input:     db 0           
-term_x_pos:         dd 10           
-file_buffer:    times 10 db 0
+colour      dd 15
+row         dd 0
+column      dd 0
+input_buffer: db 0, 0
