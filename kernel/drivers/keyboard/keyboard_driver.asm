@@ -169,7 +169,7 @@ process_scancode:
 	jmp .done
 
 .escape:
-    mov byte [menu_choice], 0xff
+    mov byte [menu_choice], -1
 	call kernel_entry
 	jmp .done
 ; ============================================================================
