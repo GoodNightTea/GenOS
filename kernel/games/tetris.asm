@@ -748,7 +748,7 @@ draw_tetris_hud:
     mov eax, PLAYFIELD_X - 3
     mov ebx, PLAYFIELD_Y - 3
     mov ecx, 3
-    mov edx, GRID_ROWS * CELL_SIZE1 + 6
+    mov edx, GRID_ROWS * CELL_SIZE1 + 5
     mov esi, 15
     call mode13_fill_rect
     
@@ -756,7 +756,7 @@ draw_tetris_hud:
     mov eax, PLAYFIELD_X + GRID_COLS * CELL_SIZE1
     mov ebx, PLAYFIELD_Y - 3
     mov ecx, 3
-    mov edx, GRID_ROWS * CELL_SIZE1 + 6
+    mov edx, GRID_ROWS * CELL_SIZE1 + 5
     mov esi, 15
     call mode13_fill_rect
     
@@ -770,7 +770,7 @@ draw_tetris_hud:
     
     ; Bottom border
     mov eax, PLAYFIELD_X - 3
-    mov ebx, PLAYFIELD_Y + GRID_ROWS * CELL_SIZE1
+    mov ebx, PLAYFIELD_Y - 1 + GRID_ROWS * CELL_SIZE1
     mov ecx, GRID_COLS * CELL_SIZE1 + 6
     mov edx, 3
     mov esi, 15
@@ -1003,13 +1003,3 @@ next_label:         db 'NEXT', 0
 pause_str:          db 'PAUSED', 0
 gameover_str:       db 'GAME OVER', 0
 tet_random_seed: dd 60332681
-%if 0
-uncertain how I should design the score system, maybe 1 per line? but it feels like blocks come every bluemoon due to it being slow as shit, imma add the gravity accel via S
-okay so after adding this whole mumbo jumbo, I think its time to switch to heavier guns, time for complexer shapes
-but lets say we create the L piece, its normally start 0/0 4x 16y and start 4/12 8x 4x, which would be a nice shape but collision checks would be insanely difficult. Thats why switching from a 8x8 pixel resolution per index to a 4x4 would be smarter.  
-fuuuck me that was sooooo painful, took me several hours to debug all of the quirks and learn all of things I didnt fully understand. okay lovely, we now have a thousand times more complexer logic and storage mechanism and i will have a way harder time to actually go forward, but hey we can have the funny shapes...
-so I guess it was rather a larger pain in the ass to keep as is than to just completely rewrite it but with writen down logic of how it should be.
-REMINDER:
-use global variables at all times, do not hardcode unless it is necessary
-go through each frame+n and the logic behind it until you find the issue
-%endif
