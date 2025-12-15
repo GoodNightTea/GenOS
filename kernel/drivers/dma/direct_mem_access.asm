@@ -206,6 +206,70 @@ fdc_read_sector:
     mov al, 1
     ret
 
+test_dma_operations:
+    mov al, 0
+    call mode13_clear_screen
+    
+    ; Test 1: Write
+    mov edi, 0x200000           ; Use high memory
+    mov ecx, 512
+    mov al, 'T'
+    rep stosb
+    
+    mov eax, 0
+    mov ecx, 1
+    mov esi, 0x200000
+    call write_data_sectors
+    
+    cmp al, 0
+    jne .fail1
+    
+    ; Test 2: Read back
+    mov eax, 0
+    mov ecx, 1
+    mov edi, 0x201000
+    call read_data_sectors
+    
+    cmp al, 0
+    jne .fail2
+    
+    ; Test 3: Verify
+    cmp byte [0x201000], 'T'
+    jne .fail3
+    
+    ; Success!
+    mov esi, pass_msg
+    mov eax, 100
+    mov ebx, 100
+    mov dl, 10
+    call mode13_print_string
+    jmp .done
+    
+.fail1:
+    mov esi, write_fail
+    jmp .show
+.fail2:
+    mov esi, read_fail
+    jmp .show
+.fail3:
+    mov esi, verify_fail
+.show:
+    mov eax, 100
+    mov ebx, 100
+    mov dl, 4
+    call mode13_print_string
+    
+.done:
+    hlt
+    jmp .done
+
+pass_msg:       db 'PASS', 0
+write_fail:     db 'WRITE FAIL', 0
+
+verify_fail:    db 'VERIFY FAIL', 0
+
+
+
 ; ============================================================================
 ; Data for read_sector
 ; ============================================================================
