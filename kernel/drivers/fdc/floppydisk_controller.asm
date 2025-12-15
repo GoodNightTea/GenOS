@@ -437,6 +437,79 @@ fdc_wait_irq:
     pop ecx
     ret
 
+fdc_write_sector:
+    pushad
+    
+    mov [write_track], al
+    mov [write_head], ah
+    mov [write_sector], bl
+    
+    call fdc_motor_on
+    
+    mov ecx, 512
+    call setup_dma_write
+    
+    mov byte [fdc_irq_fired], 0
+    
+    mov al, CMD_WRITE_DATA | CMD_MFM
+    call fdc_write_byte
+    
+    mov al, [write_head]
+    shl al, 2
+    call fdc_write_byte
+    
+    mov al, [write_track]
+    call fdc_write_byte
+    
+    mov al, [write_head]
+    call fdc_write_byte
+    
+    mov al, [write_sector]
+    call fdc_write_byte
+    
+    mov al, 2
+    call fdc_write_byte
+    
+    mov al, 18
+    call fdc_write_byte
+    
+    mov al, 0x1B
+    call fdc_write_byte
+    
+    mov al, 0xFF
+    call fdc_write_byte
+    
+    call fdc_wait_irq
+    
+    ; Read results
+    call fdc_read_byte
+    mov [fdc_result_buffer], al
+    call fdc_read_byte
+    call fdc_read_byte
+    call fdc_read_byte
+    call fdc_read_byte
+    call fdc_read_byte
+    call fdc_read_byte
+    
+    ; Check error
+    mov al, [fdc_result_buffer]
+    and al, 0xC0
+    cmp al, 0
+    jne .error
+    
+    popad
+    xor al, al
+    ret
+    
+.error:
+    popad
+    mov al, 1
+    ret
+fdc_write_msg:  db 'FDC WRITE', 0
+st0_msg:        db 'ST0', 0
+st1_msg:        db 'ST1', 0
+st2_msg:        db 'ST2', 0
+
 ; ============================================================================
 ; fdc_irq_handler: IRQ6 handler
 ; ============================================================================
@@ -454,6 +527,11 @@ fdc_irq_handler:
 ; ============================================================================
 ; Data Section
 ; ============================================================================
+
+write_track:     db 0
+write_head:      db 0
+write_sector:    db 0	
+
 fdc_ok_msg:         db 'FDC OK', 0
 fdc_error_msg:      db 'FDC ERROR', 0
 str_msr:    db 'MSR:', 0
