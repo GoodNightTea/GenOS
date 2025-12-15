@@ -36,7 +36,7 @@ kernel_entry:
 
 	mov al, [0x90000]       ; sector 0 
 	call byte_to_hex
-	mov eax, 100
+	mov eax, 80
 	mov ebx, 90
 	mov dl, 15
 	call mode13_print_string
@@ -50,7 +50,7 @@ kernel_entry:
 
 	mov al, [0x90200]       ; sector 1
 	call byte_to_hex
-	mov eax, 100
+	mov eax, 80
 	mov ebx, 100
 	mov dl, 15
 	call mode13_print_string
@@ -64,12 +64,16 @@ kernel_entry:
 
 	mov al, [0x90400]       ;sector 2
 	call byte_to_hex
-	mov eax, 100
+	mov eax, 80
 	mov ebx, 110
 	mov dl, 15
 	call mode13_print_string
+	mov eax, 200
+	call wait_frames
+	mov al, 0
+	call mode13_clear_screen
 
-	jmp .done
+	jmp .test_disk_layout
 
 .read_error:
 	mov esi, read_fail
@@ -79,11 +83,9 @@ kernel_entry:
 	call mode13_print_string
 
 .done:
-	mov eax, 200
-	call wait_frames
-    
-
 .entry:
+
+
 	cli
     ; god thats a sloppy fix, can just add an in_game variable but idk im lazy
     mov byte [is_tetris], 0
@@ -176,11 +178,63 @@ kernel_entry:
     call tetris_setup
 	jmp .tetris
     
+.test_disk_layout:
+    call show_disk_layout
+    
+    ; Try writing to sector 0 (should work)
+    mov edi, WRITE_BUFFER
+    mov ecx, 512
+    mov al, 0xAA
+    rep stosb
+    
+    mov eax, 0              ; First data sector
+    mov ecx, 1
+    mov esi, WRITE_BUFFER
+    call write_data_sectors
+    
+    cmp al, 0
+    je .write_ok
+    
+    ; Error handling
+    mov esi, write_failed_msg
+    mov eax, 20
+    mov ebx, 80
+    mov dl, 4
+    call mode13_print_string
+    jmp .wait
+    
+.write_ok:
+    mov esi, write_ok_msg
+    mov eax, 20
+    mov ebx, 80
+    mov dl, 10
+    call mode13_print_string
+    
+.wait:
+    mov eax, 500
+    call wait_frames
+	jmp .done
+
+write_ok_msg:       db 'WRITE OK', 0
+write_failed_msg:   db 'WRITE FAILED', 0
 
 
 
 
+; ============================================================================
+; Disk Layout Constants (injected by build script)
+; ============================================================================
+%ifndef DATA_START_SECTOR
+    %define DATA_START_SECTOR 34   
+%endif
 
+%ifndef DATA_SECTORS
+    %define DATA_SECTORS 2846      
+%endif
+
+
+KERNEL_DATA_START:  dd DATA_START_SECTOR
+KERNEL_DATA_SIZE:   dd DATA_SECTORS
 
 ; ============================================================================
 ; Include Kernels
@@ -224,7 +278,16 @@ PACMAN		  db '5 PACMAN', 0
 TERMINAL		  db '6 TERMINAL', 0
 DEBUG		  db '0 DEBUG', 0
 
+
+TOTAL_DISK_SECTORS  equ 2880
+KERNEL_START_SECTOR equ 2
+
+
+
 ; IDT structures
 idt_desc:
     dw 2047                         ; Limit (256 entries * 8 bytes - 1)
     dd 0                            ; Base address (filled in by setup_idt)
+
+WRITE_BUFFER    equ 0x200000
+READ_BUFFER     equ 0x200200   ; 512 bytes after write buffer
