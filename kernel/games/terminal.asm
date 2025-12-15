@@ -37,6 +37,9 @@ terminal:
     call mode13_print_string
     pop eax
     
+    
+    cmp byte [input_buffer], 'Q'
+    je .test
 
     cmp byte [colour], 0
     je .skip_advance
@@ -58,6 +61,9 @@ terminal:
     mov dword [column], 1
     inc dword [row]
     jmp .main
+.test:
+	call test_dma_operations
+	jmp .main
 
 ; Data
 colour      dd 15
