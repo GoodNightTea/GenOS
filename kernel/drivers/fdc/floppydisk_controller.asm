@@ -90,11 +90,10 @@ init_fdc:
 
     ; Success
     mov esi, fdc_ok_msg
-    mov eax, 20
-    mov ebx, 30
+    mov eax, 0
+    mov ebx, 170
     mov dl, 10
-    call mode13_print_string
-    call wait_frames
+    call print_cool_string
     popad
 	mov al, 0
     ret
@@ -102,7 +101,7 @@ init_fdc:
 .error:
     mov esi, fdc_error_msg
     mov eax, 20
-    mov ebx, 30
+    mov ebx, 30	
     mov dl, 4
     call mode13_print_string
     mov eax, 200
@@ -118,46 +117,46 @@ fdc_show_status:
     
     ; Read and display MSR
     mov esi, str_msr
-    mov eax, 20
-    mov ebx, 40
+    mov eax, 50
+    mov ebx, 170
     mov dl, 15
-    call mode13_print_string
+    call print_cool_string
     
     mov dx, FDC_MSR
     in al, dx
     call byte_to_hex
-    mov eax, 60
-    mov ebx, 40
+    mov eax, 90
+    mov ebx, 170
     mov dl, 15
-    call mode13_print_string
+    call print_cool_string
     
     ; Display ST0 (from result buffer)
     mov esi, str_st0
-    mov eax, 20
-    mov ebx, 50
+    mov eax, 50
+    mov ebx, 180
     mov dl, 15
-    call mode13_print_string
+    call print_cool_string
     
     mov al, [fdc_result_buffer]
     call byte_to_hex
-    mov eax, 60
-    mov ebx, 50
+    mov eax, 90
+    mov ebx, 180
     mov dl, 15
-    call mode13_print_string
+    call print_cool_string
     
     ; Display current track
     mov esi, str_track
-    mov eax, 20
-    mov ebx, 60
+    mov eax, 50
+    mov ebx, 190
     mov dl, 15
-    call mode13_print_string
+    call print_cool_string
     
     mov al, [fdc_result_buffer + 1]
     call byte_to_hex
-    mov eax, 60
-    mov ebx, 60
+    mov eax, 90
+    mov ebx, 190
     mov dl, 15
-    call mode13_print_string
+    call print_cool_string
     
     popad
     ret
@@ -505,10 +504,6 @@ fdc_write_sector:
     popad
     mov al, 1
     ret
-fdc_write_msg:  db 'FDC WRITE', 0
-st0_msg:        db 'ST0', 0
-st1_msg:        db 'ST1', 0
-st2_msg:        db 'ST2', 0
 
 ; ============================================================================
 ; fdc_irq_handler: IRQ6 handler
