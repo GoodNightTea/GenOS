@@ -55,10 +55,7 @@ kernel_entry:
     add ebx, 10
     mov dl, 4
     call mode13_print_string
-    mov esi, PACMAN
-	add ebx, 10
-    mov dl, 5
-    call mode13_print_string
+    ; removed pacman due to it being oos of this project
     mov esi, TERMINAL
 	add ebx, 10
     mov dl, 5
@@ -83,8 +80,6 @@ kernel_entry:
     cmp al, 4
     je .pong
     cmp al, 5
-    je .pacman
-    cmp al, 6
     je .cli
     cmp al, 0
     je .test
@@ -92,9 +87,6 @@ kernel_entry:
 .pong:
 	call pong
 	jmp .pong
-.pacman:
-	call pacman
-	jmp .pacman
 .gof:
 	call gameoflife
 	jmp .gof
@@ -123,7 +115,7 @@ kernel_entry:
 %ifndef DATA_START_SECTOR
     %define DATA_START_SECTOR 34   
 %endif
-
+	; fallback
 %ifndef DATA_SECTORS
     %define DATA_SECTORS 2846      
 %endif
@@ -140,7 +132,6 @@ KERNEL_DATA_SIZE:   dd DATA_SECTORS
 %include "games/test.asm"
 %include "games/gameoflife.asm"
 %include "games/pong.asm"
-%include "games/pacman.asm"
 %include "games/global_functions.asm"
 %include "games/snake.asm"
 %include "games/terminal.asm"
@@ -163,15 +154,14 @@ KERNEL_DATA_SIZE:   dd DATA_SECTORS
  sector0_label: db 'UNO:', 0
 sector1_label: db 'DOS:', 0
 sector2_label: db 'TRES:', 0
-read_fail:     db 'FUCK', 0
+read_fail:     db 'ERROR', 0
 
 menu		      db 'CHOOSE A GAME', 0
 SNAKE		  db '1 SNAKE', 0
 TETRIS		  db '2 TETRIS', 0
 GOF       	  db '3 GAMEOFLIFE', 0
 PONG		      db '4 PONG', 0
-PACMAN		  db '5 PACMAN', 0
-TERMINAL		  db '6 TERMINAL', 0
+TERMINAL		  db '5 TERMINAL', 0
 DEBUG		  db '0 DEBUG', 0
 
 
