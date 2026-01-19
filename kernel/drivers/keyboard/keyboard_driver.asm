@@ -13,7 +13,7 @@ SCANCODE_6          equ 0x07
 SCANCODE_7          equ 0x08
 SCANCODE_8          equ 0x09
 SCANCODE_9          equ 0x0A
-SCANCODE_BACKSPACE  equ 0x0E
+
 ; Row 2 - QWERTY row
 SCANCODE_Q          equ 0x10
 SCANCODE_E          equ 0x12
@@ -82,8 +82,8 @@ process_scancode:
     
     ; Store scancode for debugging
     mov [last_scancode], al
-
-
+    cmp al, SCANCODE_R
+    je .triple_fault
     cmp al, SCANCODE_ESC
     je .handle_esc
     ; Check if we're in tetris mode
@@ -100,10 +100,8 @@ process_scancode:
     ; Check if it's a break code (key release - bit 7 set)
     test al, 0x80
     jnz .done
-    cmp al, SCANCODE_SPACE
-    je .escape
-    cmp al, SCANCODE_R
-    je .triple_fault
+    
+
     cmp al, SCANCODE_0
     je .menu_choice_0
     cmp al, SCANCODE_1
@@ -116,6 +114,8 @@ process_scancode:
     je .menu_choice_4
     cmp al, SCANCODE_5
     je .menu_choice_5
+    cmp al, SCANCODE_6
+    je .menu_choice_6
     ; Check for arrow keys or WASD
     cmp al, SCANCODE_RIGHT
     je .set_right
@@ -158,79 +158,70 @@ process_scancode:
     mov byte [is_pong], 1 	
     mov byte [menu_choice], 4
     jmp .done
-.menu_choice_5: 	
-	mov byte [is_cli], 1
+.menu_choice_5:
     mov byte [menu_choice], 5
 	jmp .done
-
-.escape:
-    mov byte [menu_choice], -1
-	call kernel_entry
+.menu_choice_6: 	
+	mov byte [is_cli], 1
+    mov byte [menu_choice], 6
 	jmp .done
+
+
 ; ============================================================================
 ; CLI INPUT HANDLER
 ; ============================================================================
 .cli_input:
-    test al, 0x80      
-    jnz .done
-    
-    ; Handle backspace specially
-    cmp al, SCANCODE_BACKSPACE
-    je .delete
-    
-	cmp al, SCANCODE_ENTER
-	je .enter
+	cmp al, SCANCODE_Q
+	je .Q
+	cmp al, SCANCODE_W
+	je .W
+	cmp al, SCANCODE_E
+	je .E
+	cmp al, SCANCODE_R
+	je .R
+	cmp al, SCANCODE_T
+	je .T
+	cmp al, SCANCODE_Y
+	je .Y
+	cmp al, SCANCODE_U
+	je .U
+	cmp al, SCANCODE_I
+	je .I
+	cmp al, SCANCODE_O
+	je .O
+	jmp .done
+.Q:
+	mov byte [input_buffer], 'Q'
+	jmp .done
+.W:
+	mov byte [input_buffer], 'W'
+	jmp .done
+.E:
+	mov byte [input_buffer], 'E'
+	jmp .done
+.R:
+	mov byte [input_buffer], 'R'
+	jmp .done
+.T:
+	mov byte [input_buffer], 'T'
+	jmp .done
+.Y:
+	mov byte [input_buffer], 'Y'
+	jmp .done
+.U:
+	mov byte [input_buffer], 'U'
+	jmp .done
+.I:
+	mov byte [input_buffer], 'I'
+	jmp .done
+.O:
+	mov byte [input_buffer], 'O'
+	jmp .done
 	
-    movzx ebx, al                         
-    mov cl, [scancode_to_ascii + ebx]    
-    test cl, cl                           
-    jz .done                               ; If 0, no mapping 
-    
-
-    mov [input_buffer], cl
-    mov byte [input_buffer + 1], 0        
-    jmp .done
-
-.enter:
-    mov byte [flush_request], 1   
-    inc dword [row]
-    mov dword [column], 1
-    mov byte [input_buffer], 0xff   ; Clear input
-    jmp .done
-    
-.space:
-    mov byte [input_buffer], ' '
-    mov byte [input_buffer + 1], 0 
-    jmp .done
-    
-.delete:
-    cmp dword [column], 1  
-    jle .row
-    
-    dec dword [column]
-    mov byte [input_buffer], ' '
-    mov byte [colour], 0  
-    jmp .done
-    
-.row:
-    cmp dword [row], 1                     
-    jle .done
-    
-    dec dword [row]
-    mov dword [column], 37             
-    mov byte [input_buffer], ' '
-    mov byte [input_buffer + 1], 0
-    mov byte [colour], 0  
-    jmp .done
-    
 ; ============================================================================
 ; TETRIS INPUT HANDLING
 ; ============================================================================
 .tetris_input:
-    cmp al, SCANCODE_R
-    je .triple_fault
-    cmp al, SCANCODE_SPACE
-    je .escape
     ; Handle soft drop (S key press/release)
     cmp al, SCANCODE_S
     je .tetris_soft_drop_on
@@ -291,10 +282,6 @@ process_scancode:
 ; PONG INPUT HANDLING
 ; ============================================================================
 .pong_input:
-    cmp al, SCANCODE_R
-    je .triple_fault
-    cmp al, SCANCODE_SPACE
-    je .escape
 	mov ah, al
 	test ah, 0x80        ; ah = 0x80 if release, 0x00 if press
 	jnz .released_input
@@ -425,10 +412,7 @@ process_scancode:
 ; DEBUG INPUT HANDLING
 ; ============================================================================
 .debug_input:
-    cmp al, SCANCODE_SPACE
-    je .escape
-    cmp al, SCANCODE_R
-    je .triple_fault
+	
 ;	cmp al, SCANCODE_0
 ;	je .C0
 	cmp al, SCANCODE_1
@@ -451,11 +435,11 @@ process_scancode:
 	je .C9
 	
 	cmp al, SCANCODE_Q
-	je .mq
+	je .fuck
 	cmp al, SCANCODE_W
-	je .mw
+	je .shit
 	cmp al, SCANCODE_E
-	je .me
+	je .cunt
 	;cmp al, SCANCODE_R
 	;cmp al, SCANCODE_T
 	;cmp al, SCANCODE_Y
@@ -467,13 +451,13 @@ process_scancode:
 	;cmp al, SCANCODE_P
 	
 	jmp .done
-.mq:
+.fuck:
 	mov dword [freq], 5
 	jmp .done
-.mw:
+.shit:
 	mov dword [freq], 2
 	jmp .done
-.me:
+.cunt:
 	mov dword [freq], 4198
 
 	jmp .done
@@ -562,18 +546,6 @@ get_direction_delta:
     pop ecx
     ret
 
-
-
-scancode_to_ascii:
-    times 0x10 db 0                                      ; 0x00-0x0F (no mapping)
-    db 'Q','W','E','R','T','Y','U','I','O','P'          ; 0x10-0x19
-    times (0x1E - 0x1A) db 0                            ; 0x1A-0x1D (no mapping)
-    db 'A','S','D','F','G','H','J','K','L'              ; 0x1E-0x26
-    times (0x2C - 0x27) db 0                            ; 0x27-0x2B (no mapping)
-    db 'Z','X','C','V','B','N','M'                      ; 0x2C-0x32
-    times (0x39 - 0x33) db 0                            ; 0x33-0x38 (no mapping)
-    db ' '                                               ; 0x39 = SPACE
-    times (0x100 - 0x3A) db 0                           ; Rest = no mapping
 ; ============================================================================
 ; Data Section
 ; ============================================================================
