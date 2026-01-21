@@ -34,6 +34,7 @@ g_paused:
 	ret
 
 ; ============================================================================
+; I had issues with setting up IDT, it is created with the help of AI
 ; IDT Setup
 ; ============================================================================
 setup_idt:
@@ -175,6 +176,7 @@ init_pics:
     
     ret
 ; ============================================================================
+; same with the fdc idt
 ; setup_fdc_idt: Set up IDT entry for FDC interrupt (IRQ6 = INT 38)
 ; ============================================================================
 setup_fdc_idt:
