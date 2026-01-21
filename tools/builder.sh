@@ -1,4 +1,5 @@
 #!/bin/bash
+# THIS IS AI GENERATED, mostly out of convinience. I had pushed off implementing the FS due to previous issues with it
 # GenOS Build Script - Simple and Dynamic
 # Fat 12 filesystem (somewhat implemented)
 set -e  # Exit on error
