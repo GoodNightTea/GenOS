@@ -1,4 +1,5 @@
 ; ============================================================================
+; START OF AI GENERATED SECTION 
 ; Timer System using PIT (Programmable Interval Timer)
 ; ============================================================================
 
@@ -70,7 +71,7 @@ setup_timer_idt:
     
     popad
     ret
-
+; END OF AI GENERATED SECTION ;
 ; ============================================================================
 ; timer_handler: IRQ0 interrupt handler
 ; Increments frame counter and sends EOI
