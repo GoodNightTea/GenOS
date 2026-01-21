@@ -1,3 +1,4 @@
+; GENERATED ENTIRELY by AI, i did NOT bother to create GoF because it just didnt interest me lol. I just needed to fill the game amount, and a way to stress test PCs with a 0 delay program
 ; Game of Life - x86 Assembly (Mode 13h)
 ; Double-buffered, toroidal grid
 
