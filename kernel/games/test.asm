@@ -52,7 +52,9 @@ test:
 	
 	
 	jmp .loop
-	
+
+
+; wanted to see if AI can generate tetris, just try it out. I think its closer to a pokemon song than tetris, i cannot even classify that song so dont dmca me 
 NOTE_E5  equ 659
 NOTE_B4  equ 494
 NOTE_C5  equ 523
