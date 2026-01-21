@@ -563,7 +563,7 @@ get_direction_delta:
     ret
 
 
-
+; IDEA given by AI ;
 scancode_to_ascii:
     times 0x10 db 0                                      ; 0x00-0x0F (no mapping)
     db 'Q','W','E','R','T','Y','U','I','O','P'          ; 0x10-0x19
@@ -574,6 +574,7 @@ scancode_to_ascii:
     times (0x39 - 0x33) db 0                            ; 0x33-0x38 (no mapping)
     db ' '                                               ; 0x39 = SPACE
     times (0x100 - 0x3A) db 0                           ; Rest = no mapping
+; END OF AI SECTION ;
 ; ============================================================================
 ; Data Section
 ; ============================================================================
