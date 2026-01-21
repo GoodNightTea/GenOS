@@ -25,10 +25,12 @@ debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-
 |-----|--------|
 | **1** | Play Snake  |
 | **2** | Play Tetris |
-| **3** | Test  |
-| **4** | Play Game of Life |
-| **5** | Play Pong  |
+| **3** | Game of Life  |
+| **4** | Pong |
+| **5** | Minimal Terminal |
+| **0** | Debug |
 | **ESC** | Pause |
+| **spacebar** | Returns to the main MENU |
 | **R** | Reset |
 
 ### Snake
@@ -45,7 +47,9 @@ debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-
 | **A** | Move Left |
 | **D** | Move Right |
 | **S** | Soft Drop |             
-| **SPACE** | Rotate |
+| **SPACE** | Rotate |  
+#### i need to fix the rotate keybind, rn gets fetched by return to menu
+
 ### Pong
 | Key | Action |
 |-----|--------|
@@ -53,6 +57,18 @@ debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-
 | **D** | Player 1 right |
 | **Left-arrow** | Player 2 left |
 | **Right-arrow** | Player 2 right |
+
+### Test
+| Key | Action |
+|-----|--------|
+| **1** | Plays a low tone |
+| **0** | Plays a high tone |
+### Note: each key between 1 and 0 plays a different tone, could be seen as a keyboard, but I just use it to annoy others
+
+## STARTUP
+### displays the current occupied and free sectors injected by the build script
+<img width="639" height="394" alt="image" src="https://github.com/user-attachments/assets/6d021d6f-d804-487e-b0bd-16d978719cbd" />
+
 ### Snake
 <img width="642" height="390" alt="image" src="https://github.com/user-attachments/assets/1cd8dff8-d5d8-4233-bdec-9e0fde70757d" />
 
@@ -67,6 +83,7 @@ debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-
 
 ### Pong 
 <img width="640" height="403" alt="image" src="https://github.com/user-attachments/assets/ecdf5b91-db1f-4699-9506-5292f85f38fc" />
+
 
 
 ## What this is
@@ -141,6 +158,14 @@ Meant as the Software stack for a graduation project that involved creating a Ga
 │   │   │   └── font1.asm
 │   │   ├── keyboard
 │   │   │   └── keyboard_driver.asm
+│   │   ├── fdc
+│   │   │   └── floppydisk_controller.asm
+│   │   ├── fs
+│   │   │   └── fat12.asm
+│   │   ├── dma
+│   │   │   └── direct_mem_access.asm
+│   │   ├── keyboard
+│   │   │   └── keyboard_driver.asm
 │   │   ├── timer
 │   │   │   └── timer_driver.asm
 │   │   └── vga
@@ -148,11 +173,11 @@ Meant as the Software stack for a graduation project that involved creating a Ga
 │   ├── games
 │   │   ├── gameoflife.asm
 │   │   ├── global_functions.asm
-│   │   ├── pacman.asm
 │   │   ├── pong.asm
 │   │   ├── snake.asm
 │   │   ├── test.asm
 │   │   └── tetris.asm
+│   │   └── terminal.asm
 │   └── main_kernel.asm
 └── tools
     └── builder.sh
