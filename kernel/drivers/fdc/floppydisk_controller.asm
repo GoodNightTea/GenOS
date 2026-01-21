@@ -1,4 +1,6 @@
 ; ============================================================================
+; START OF AI GENERATED SECTION 
+; I had extreme issues with the FDC, this version (which is version 4) was entirely written by AI
 ; Floppy Disk Controller (FDC) Driver
 ; ============================================================================
 ; For 1.44MB 3.5" floppy disks
@@ -520,6 +522,7 @@ fdc_irq_handler:
     iret
 
 ; ============================================================================
+; END OF AI GENERATED SECTION ;
 ; Data Section
 ; ============================================================================
 
