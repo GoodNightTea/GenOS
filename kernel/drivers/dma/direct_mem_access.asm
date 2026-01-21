@@ -1,4 +1,6 @@
+
 ; ============================================================================
+; START AI GENERATED SECTION ;
 ; setup_dma_read: Configure DMA channel 2 for reading from FDC
 ; Input: ECX = number of bytes to transfer (typically 512)
 ; ============================================================================
@@ -205,7 +207,7 @@ fdc_read_sector:
     popad
     mov al, 1
     ret
-
+; END OF AI GENERATED SECTION ;
 test_dma_operations:
     mov al, 0
     call mode13_clear_screen
