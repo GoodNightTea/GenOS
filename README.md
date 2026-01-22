@@ -19,6 +19,19 @@ sh tools/dynamic_builder.sh
 simple: qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy
 
 debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-reboot -no-shutdown -d int,cpu_reset
+
+### watching the file system:
+watch "hexdump -C build/genos.img | tail -20"
+
+### flashing onto a floppy disk:
+**(note)**: It is recommend to only flash onto a floppy disk adapter, as flashing onto a USB does currently not work.
+sudo dd if=build/genos.img of=/dev/sda bs=512 ; note the floppy disk adapter shows up as /dev/sda due to it being adapted via usb hub
+sudo qemu-system-x86_64 -drive file=/dev/sda,format=raw,if=floppy 
+
+### watching the file system live on a floppy disk (warning creates large overhead and latency):
+sudo watch "sudo dd if=/dev/sda of=live.img" ; adjust latency dependent on your overhead to get a live view
+watch "hexdump -C build/live.img | tail -20"
+this is really unecessary and needs a lot of adjusting, not recommended. 
 ## Controls
 ### Menu
 | Key | Action |
@@ -58,6 +71,13 @@ debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-
 | **Left-arrow** | Player 2 left |
 | **Right-arrow** | Player 2 right |
 
+### Terminal
+| Key | Action |
+|-----|--------|
+| **MOST KEYS** | Player 1 left |
+| **ENTER** | Shifts row and resets column |
+| **DELETE** | Player 2 left |
+
 ### Test
 | Key | Action |
 |-----|--------|
@@ -68,6 +88,10 @@ debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-
 ## STARTUP
 ### displays the current occupied and free sectors injected by the build script
 <img width="639" height="394" alt="image" src="https://github.com/user-attachments/assets/6d021d6f-d804-487e-b0bd-16d978719cbd" />
+
+## Main Menu
+### displays the current available "games"
+<img width="632" height="391" alt="image" src="https://github.com/user-attachments/assets/68bd8707-235e-4602-afcd-844f97b240da" />
 
 ### Snake
 <img width="642" height="390" alt="image" src="https://github.com/user-attachments/assets/1cd8dff8-d5d8-4233-bdec-9e0fde70757d" />
@@ -84,6 +108,9 @@ debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-
 ### Pong 
 <img width="640" height="403" alt="image" src="https://github.com/user-attachments/assets/ecdf5b91-db1f-4699-9506-5292f85f38fc" />
 
+### Minimal Terminal
+<img width="1443" height="439" alt="image" src="https://github.com/user-attachments/assets/22b7256a-3450-4b0d-b4bb-31285961f31b" />
+
 
 
 ## What this is
@@ -93,6 +120,7 @@ debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-
 - Direct VGA framebuffer interaction
 - Memory management via circular buffers
 - Pseudo random number generation
+- Integrated file system that persist data across reboot
 
 ## Why?
 Meant as the Software stack for a graduation project that involved creating a Gameboy, this was more of a practice run as I realized x86_64 isn't really used in microcontrollers... 
@@ -133,8 +161,6 @@ Meant as the Software stack for a graduation project that involved creating a Ga
 0x00100000  - Kernel 1MB mark, expanded to 8KB
 0x00110000  - IDT (256 entries × 8 bytes)
 0x000A0000  - VGA framebuffer
-
-
 
 
 ## Project Structure
@@ -191,8 +217,10 @@ Meant as the Software stack for a graduation project that involved creating a Ga
 - **Race-Conditions**: Rotation issue and potential apple collision/spawning issue (unconfirmed)
 ### Pong:
 - **Ball Race**: The ball can phase into the paddle when at certain speeds or when going in from the side, still gets detected as a collision but can eat through the hud
-### Pacman:
-- **Missing everything**: unfinished
+### Tetris:
+- **Keybind conflict**: the current rotate piece keybind, is conflicting with the return to menu button
+### Terminal:
+- **Not all ASCII chars**: current unicode characters and numbers haven't been integrated into the font and keyboard handler
 
 
 ## Contact
