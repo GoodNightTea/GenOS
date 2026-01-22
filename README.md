@@ -15,22 +15,36 @@ sh tools/dynamic_builder.sh
 ```
 ### Use
 **In Qemu:**
-
+```
 simple: qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy
+```
 
+```
 debug:  qemu-system-x86_64 -drive file=build/genos.img,format=raw,if=floppy -no-reboot -no-shutdown -d int,cpu_reset
+```
 
 ### watching the file system:
+```
 watch "hexdump -C build/genos.img | tail -20"
+```
 
 ### flashing onto a floppy disk:
 **(note)**: It is recommend to only flash onto a floppy disk adapter, as flashing onto a USB does currently not work.
-sudo dd if=build/genos.img of=/dev/sda bs=512 ; note the floppy disk adapter shows up as /dev/sda due to it being adapted via usb hub
+```
+sudo dd if=build/genos.img of=/dev/sda bs=512
+```
+; note the floppy disk adapter shows up as /dev/sda due to it being adapted via usb hub
+```
 sudo qemu-system-x86_64 -drive file=/dev/sda,format=raw,if=floppy 
+```
 
 ### watching the file system live on a floppy disk (warning creates large overhead and latency):
-sudo watch "sudo dd if=/dev/sda of=live.img" ; adjust latency dependent on your overhead to get a live view
+```
+sudo watch "sudo dd if=/dev/sda of=live.img"
 watch "hexdump -C build/live.img | tail -20"
+```
+adjust latency dependent on your overhead to get a live view
+
 this is really unecessary and needs a lot of adjusting, not recommended. 
 ## Controls
 ### Menu
