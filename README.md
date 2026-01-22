@@ -1,7 +1,45 @@
 
 # GenOS
-A minimalist OS (depends what you classify as an OS) built from scratch as a graduation project, it's not the best but I like it. 
-It is fun building upon it, even if I cause triple faults every now and then... 
+A minimal x86 operating system with games, VGA graphics, and FAT12 filesystem support for floppy disks!
+
+## What this is
+- Custom bootloader chain handling 16-bit to 32-bit mode transitions
+- Interrupt-driven architecture with keyboard and timer handlers
+- Grid based collision system (inside of tetris)
+- Direct VGA framebuffer interaction
+- Memory management via circular buffers
+- Pseudo random number generation
+- Integrated file system that persist data across reboot
+
+## Features
+### Low-Level Systems
+- **Two-stage bootloader**: BIOS boot sector → Stage 2 loader → Protected mode kernel
+- **Protected mode operation**: Full 32-bit mode with GDT configuration
+- **Interrupt handling**: Custom IDT with 256 entries, PIC remapping (IRQ0: Timer, IRQ1: Keyboard)
+- **Hardware timer**: PIT configured at ~18.2Hz with HLT-based power management
+- **Keyboard driver**: PS/2 scancode processing with press/release detection
+- **VGA Mode 13h**: 320×200 resolution, 256-color palette with the most beautiful font ever created
+
+## Clarification on the use of AI assistance in this project:
+#### AI assisted or entirely written by it:
+- FDC driver (kernel/drivers/fdc/floppydisk_controller.asm)
+- DMA setup (kernel/drivers/dma/direct_mem_access.asm)
+- Timer system (kernel/drivers/timer/timer_driver.asm)
+- IDT setup (kernel/games/global_functions.asm)
+- Game of Life (kernel/games/gameoflife.asm)
+- Build script (tools/builder.sh)
+As well as general assistance with optimization of code and logic flow in the beginning due to lacking knowledge of x86_64 ASM
+
+#### Human-written:
+- All game flow and logic
+- VGA driver and functions
+- Keyboard driver and input handling
+- Filesystem API and allocation bitmap
+- Boot sector and Stage 2 loader
+- All frontend VGA visuals
+- PIT Audio driver
+- The most beautiful bitmap font ever
+I have tried to keep AI assistance to its minimun.
 
 ## Build Instructions
 
@@ -126,28 +164,6 @@ this is really unecessary and needs a lot of adjusting, not recommended.
 <img width="1443" height="439" alt="image" src="https://github.com/user-attachments/assets/22b7256a-3450-4b0d-b4bb-31285961f31b" />
 
 
-
-## What this is
-- Custom bootloader chain handling 16-bit to 32-bit mode transitions
-- Interrupt-driven architecture with keyboard and timer handlers
-- Grid based collision system (inside of tetris)
-- Direct VGA framebuffer interaction
-- Memory management via circular buffers
-- Pseudo random number generation
-- Integrated file system that persist data across reboot
-
-## Why?
-Meant as the Software stack for a graduation project that involved creating a Gameboy, this was more of a practice run as I realized x86_64 isn't really used in microcontrollers... 
-## Features
-### Low-Level Systems
-- **Two-stage bootloader**: BIOS boot sector → Stage 2 loader → Protected mode kernel
-- **Protected mode operation**: Full 32-bit mode with GDT configuration
-- **Interrupt handling**: Custom IDT with 256 entries, PIC remapping (IRQ0: Timer, IRQ1: Keyboard)
-- **Hardware timer**: PIT configured at ~18.2Hz with HLT-based power management
-- **Keyboard driver**: PS/2 scancode processing with press/release detection
-- **VGA Mode 13h**: 320×200 resolution, 256-color palette with the most beautiful font ever created
-
-
 ```
 ## Architecture 
 
@@ -166,15 +182,19 @@ Meant as the Software stack for a graduation project that involved creating a Ga
 │   (8KB @ 1MB)   │  runs game loop
 └─────────────────┘
 ```
-### Memory Layout
-
-0x00000000  - Real mode IVT
-0x00007000  - Stack 8kb allocated
-0x00007C00  - Boot sector loads here
-0x00001000  - Stage 2 loads here  
-0x00100000  - Kernel 1MB mark, expanded to 8KB
-0x00110000  - IDT (256 entries × 8 bytes)
-0x000A0000  - VGA framebuffer
+```
+Memory Layout
+0x00000000                           Real mode IVT
+0x00007000                           Stack (8KB)                    
+0x00007C00                           Boot load point                      
+0x00001000                           Stage 2 load point                  
+0x00080000                           DMA buffer (8KB for FDC)               
+0x000A0000                           VGA framebuffer (Mode 13h)         
+0x00100000                           Kernel (1MB mark, dynamic size)       
+0x00110000                           IDT (256 entries × 8 bytes)  
+0x00200000                           Write buffer (filesystem)      
+0x00200200                           Read buffer (filesystem)
+```
 
 
 ## Project Structure
