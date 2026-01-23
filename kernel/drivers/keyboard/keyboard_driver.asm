@@ -9,7 +9,7 @@ SCANCODE_2          equ 0x03 ; TETRIS
 SCANCODE_3          equ 0x04 ; GOF
 SCANCODE_4          equ 0x05 ; PONG
 SCANCODE_5          equ 0x06 ; CLI
-SCANCODE_6          equ 0x07 
+SCANCODE_6          equ 0x07 ; FONT TESTER
 SCANCODE_7          equ 0x08
 SCANCODE_8          equ 0x09
 SCANCODE_9          equ 0x0A
@@ -79,22 +79,22 @@ DIR_DOWN            equ 3
 ; ============================================================================
 process_scancode:
     pushad
-    
+
     ; Store scancode for debugging
     mov [last_scancode], al
-
-
+    cmp byte [is_cli], 1
+    je .cli_input
+    cmp byte [is_tetris], 1
+    je .tetris_input
     cmp al, SCANCODE_ESC
     je .handle_esc
     ; Check if we're in tetris mode
-    cmp byte [is_tetris], 1
-    je .tetris_input
+
     cmp byte [is_pong], 1
     je .pong_input
     cmp byte [is_debug], 1
     je .debug_input
-    cmp byte [is_cli], 1
-    je .cli_input
+
     ; ---- SNAKE/MENU INPUT ----
     
     ; Check if it's a break code (key release - bit 7 set)
@@ -116,6 +116,8 @@ process_scancode:
     je .menu_choice_4
     cmp al, SCANCODE_5
     je .menu_choice_5
+    cmp al, SCANCODE_6
+    je .menu_choice_6
     ; Check for arrow keys or WASD
     cmp al, SCANCODE_RIGHT
     je .set_right
@@ -162,7 +164,10 @@ process_scancode:
 	mov byte [is_cli], 1
     mov byte [menu_choice], 5
 	jmp .done
-
+	
+.menu_choice_6: 	
+    mov byte [menu_choice], 6
+	jmp .done
 .escape:
     mov byte [menu_choice], -1
 	call kernel_entry
@@ -177,7 +182,10 @@ process_scancode:
     ; Handle backspace specially
     cmp al, SCANCODE_BACKSPACE
     je .delete
-    
+
+	cmp al, SCANCODE_ESC
+	je .escape
+
 	cmp al, SCANCODE_ENTER
 	je .enter
 	
@@ -233,7 +241,7 @@ process_scancode:
     cmp al, SCANCODE_R
     je .triple_fault
     cmp al, SCANCODE_SPACE
-    je .escape
+    je .tetris_rotate
     ; Handle soft drop (S key press/release)
     cmp al, SCANCODE_S
     je .tetris_soft_drop_on
@@ -418,6 +426,7 @@ process_scancode:
 ; ============================================================================
 .handle_esc:
     xor byte [game_running], 1
+    
 
 .done:
     popad
