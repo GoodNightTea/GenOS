@@ -1,4 +1,4 @@
-	; ============================================================================
+; ============================================================================
 ; Mode 13h VGA Driver (320x200, 256 colors)
 ; ============================================================================
 
@@ -129,7 +129,7 @@ print_cool_string:
 .draw_it:
     movzx edi, al
     shl edi, 3
-    lea edi, [font_data + edi]
+    lea edi, [font1_data + edi]
     
     xor ebp, ebp
 .row_loop:
@@ -189,7 +189,7 @@ print_cool_string:
     ret
 
 ; ----------------------------------------------------------------------------
-; Input: ESI = pointer to null-terminated string !only uppercase
+; Input: ESI = pointer to null-terminated string only uppercase
 ;
 ;        EAX = x position, EBX = y position, DL = color
 ; ----------------------------------------------------------------------------
@@ -247,7 +247,7 @@ mode13_print_string:
 .draw_it:
     movzx edi, al
     shl edi, 3
-    lea edi, [font_data + edi]
+    lea edi, [font1_data + edi]
     
     xor ebp, ebp
 .row_loop:
@@ -307,6 +307,125 @@ mode13_print_string:
     ret
 
 string_ptr dd 0
+
+; ----------------------------------------------------------------------------
+; Input: ESI = pointer to null-terminated string only uppercase
+;
+;        EAX = x position, EBX = y position, DL = color
+; ----------------------------------------------------------------------------
+font2_string:
+    pushad
+    mov [string_x], eax
+    mov [string_y], ebx
+    mov [string_color], dl
+    mov [string_ptr], esi
+    
+.next_char:
+	;push eax
+    ;mov eax, 1
+    ;call wait_frames
+    ;pop eax
+    mov esi, [string_ptr]
+    lodsb
+    mov [string_ptr], esi
+    
+    test al, al
+    jz .done
+    
+    ; Convert ASCII to font index
+    cmp al, '0'
+    jb .check_space
+    cmp al, '9'
+    jbe .is_digit
+    cmp al, 'A'
+    jb .check_space
+    cmp al, 'Z'
+    jbe .is_letter
+    cmp al, 'a'                 ; Support lowercase too
+    jb .check_space
+    cmp al, 'z'
+    ja .check_space
+    sub al, 'a'
+    add al, 10
+    jmp .draw_it
+    
+.is_digit:
+    sub al, '0'                 ; '0'-'9' → 0-9
+    jmp .draw_it
+    
+.is_letter:
+    sub al, 'A'                 ; 'A'-'Z' → 0-25
+    add al, 10                  ; Offset by 10 (after digits)
+    jmp .draw_it
+    
+.check_space:
+    cmp al, ' '
+    jne .skip_char              ; Unknown character, skip
+    mov al, 36                  ; Space is at index 36
+    jmp .draw_it
+    
+.draw_it:
+    movzx edi, al
+    shl edi, 3
+    lea edi, [font2_data + edi]
+    
+    xor ebp, ebp
+.row_loop:
+    cmp ebp, 8
+    jge .char_done
+    
+    mov al, [edi]
+    inc edi
+    push eax
+    
+    xor ecx, ecx
+.col_loop:
+    cmp ecx, 8
+    jge .next_row
+    
+    mov eax, [esp]
+    mov edx, 7
+    sub edx, ecx
+    push ecx
+    mov cl, dl
+    shr eax, cl
+    pop ecx
+    
+    test al, 1
+    jz .skip_pixel
+    
+    push ecx
+    push ebp
+    mov eax, [string_x]
+    add eax, ecx
+    mov ebx, [string_y]
+    add ebx, ebp
+    mov cl, [string_color]
+    call mode13_set_pixel
+    pop ebp
+    pop ecx
+    
+.skip_pixel:
+    inc ecx
+    jmp .col_loop
+    
+.next_row:
+    pop eax
+    inc ebp
+    jmp .row_loop
+    
+.char_done:
+    add dword [string_x], 8
+    jmp .next_char
+
+.skip_char:
+    add dword [string_x], 8     ; Still advance for spacing
+    jmp .next_char
+    
+.done:
+    popad
+    ret
+
 
 ; ----------------------------------------------------------------------------
 ; mode13_set_pixel: Draw single pixel
