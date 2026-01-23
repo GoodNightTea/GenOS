@@ -199,17 +199,20 @@ process_scancode:
     jmp .done
     
 .space:
+	mov byte [colour], 15
     mov byte [input_buffer], ' '
     mov byte [input_buffer + 1], 0 
     jmp .done
     
 .delete:
+	mov byte [colour], 0	
     cmp dword [column], 1  
     jle .row
     
     dec dword [column]
     mov byte [input_buffer], ' '
-    mov byte [colour], 0  
+    mov byte [input_buffer - 1], 0
+    mov byte [colour], 0
     jmp .done
     
 .row:
