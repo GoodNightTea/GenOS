@@ -21,4 +21,4 @@ font_tester:
 	jmp .loop
 	
 	
-alphabet		      db '0123456789 ABCDEFGHIJKLMNOPQRSTUVW', 0
+alphabet		      db '0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ', 0
