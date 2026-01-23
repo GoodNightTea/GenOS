@@ -12,7 +12,16 @@ kernel_entry:
 	sti
 	cmp byte [menu_choice], -1
 	je .entry
-	
+
+	; debug - remove after done
+	call detect_fdc
+	cmp al, 1
+	je .skip_fdc_init
+	call init_fdc
+.skip_fdc_init:
+	; debug - remove after done
+    
+    
     call setup_fdc_idt      
 	call init_fdc
 	call show_disk_stats
@@ -60,6 +69,10 @@ kernel_entry:
 	add ebx, 10
     mov dl, 5
     call mode13_print_string
+    mov esi, FONT
+	add ebx, 10
+    mov dl, 5
+    call mode13_print_string
     
     mov esi, DEBUG
     add ebx, 10
@@ -81,6 +94,8 @@ kernel_entry:
     je .pong
     cmp al, 5
     je .cli
+    cmp al, 6
+    je .font_tester
     cmp al, 0
     je .test
  	jmp .wait_for_choice             ; Keep waiting 
@@ -96,13 +111,18 @@ kernel_entry:
 .test:
 	call test
 	mov byte [is_debug], 1
-	jmp .test	
+	jmp .test
+	
 .snake:
 	call snake
 	jmp .snake
 .tetris:
     call tetris_setup
 	jmp .tetris
+	
+.font_tester:
+    call font_tester
+	jmp .font_tester
     
 
 
@@ -135,12 +155,14 @@ KERNEL_DATA_SIZE:   dd DATA_SECTORS
 %include "games/global_functions.asm"
 %include "games/snake.asm"
 %include "games/terminal.asm"
+%include "misc/font_tester.asm"
 
 ; ============================================================================
 ; Include Drivers
 ; ============================================================================
 
 %include "drivers/fonts/font1.asm"
+%include "drivers/fonts/font2.asm"
 %include "drivers/vga/13h_vga.asm"
 %include "drivers/keyboard/keyboard_driver.asm"
 %include "drivers/timer/timer_driver.asm"
@@ -157,12 +179,13 @@ sector2_label: db 'TRES:', 0
 read_fail:     db 'ERROR', 0
 
 menu		      db 'CHOOSE A GAME', 0
-SNAKE		  db '1 SNAKE', 0
-TETRIS		  db '2 TETRIS', 0
-GOF       	  db '3 GAMEOFLIFE', 0
+SNAKE		      db '1 SNAKE', 0
+TETRIS		      db '2 TETRIS', 0
+GOF       	      db '3 GAMEOFLIFE', 0
 PONG		      db '4 PONG', 0
 TERMINAL		  db '5 TERMINAL', 0
-DEBUG		  db '0 DEBUG', 0
+FONT		      db '6 FONT TESTER', 0
+DEBUG		      db '0 DEBUG', 0
 
 
 TOTAL_DISK_SECTORS  equ 2880
