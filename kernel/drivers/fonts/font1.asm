@@ -1,5 +1,5 @@
 ; the most beautiful and advanced font
-font_data:
+font1_data:
     ; Character '0' for some reason the 
     db 0b00111100
     db 0b01000010
@@ -364,7 +364,7 @@ draw_char:
     sub cl, '0'
     movzx esi, cl
     shl esi, 3
-    lea esi, [font_data + esi]
+    lea esi, [font1_data + esi]
     
     ; Draw 8×8 bitmap
     xor edi, edi               ; Row counter
