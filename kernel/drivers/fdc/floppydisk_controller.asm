@@ -60,7 +60,7 @@ BYTES_PER_SECTOR    equ 512
 ; ============================================================================
 ; DMA Buffer
 ; ============================================================================
-DMA_BUFFER          equ 0x80000
+DMA_BUFFER 			equ 0x10000    ; 64KB 
 
 ; ============================================================================
 ; Error Codes
@@ -75,7 +75,18 @@ ERR_SEEK_ERROR      equ 0x02
 ; ============================================================================
 init_fdc:
     pushad
-
+    
+    ; Check if hardware exists
+    mov dx, FDC_MSR
+    in al, dx
+    cmp al, 0xFF
+    je .no_hardware
+    
+    mov dx, FDC_DOR
+    in al, dx
+    cmp al, 0xFF
+    je .no_hardware
+   
     ; Reset controller
     call fdc_reset
 
@@ -111,6 +122,17 @@ init_fdc:
     popad
     mov al, 1
     ret
+.no_hardware:
+    mov esi, no_fdc_msg
+    mov eax, 20
+    mov ebx, 30
+    mov dl, 4
+    call mode13_print_string
+    popad
+    mov al, 1
+    ret
+    
+
 ; ============================================================================
 ; fdc_show_status: Display FDC status registers
 ; ============================================================================
@@ -312,7 +334,7 @@ fdc_motor_on:
     out dx, al
     
     ; Wait for spinup
-    mov eax, 30
+    mov eax, 500			; increased to 500 ms
     call delay_ms
     
     popad
@@ -411,6 +433,29 @@ fdc_read_byte:
     pop edx
     pop ecx
     pop ebx
+    ret
+
+
+; ============================================================================
+; detect_fdc: tries to detect the floppy disk controller
+; ============================================================================
+detect_fdc:
+    mov dx, FDC_DOR
+    in al, dx
+    cmp al, 0xFF            ; 0xFF = no hardware
+    je .no_fdc
+    
+    mov dx, FDC_MSR
+    in al, dx
+    cmp al, 0xFF
+    je .no_fdc
+    
+    ; FDC exists
+    mov al, 0
+    ret
+    
+.no_fdc:
+    mov al, 1
     ret
 
 ; ============================================================================
@@ -532,6 +577,8 @@ write_sector:    db 0
 
 fdc_ok_msg:         db 'FDC OK', 0
 fdc_error_msg:      db 'FDC ERROR', 0
+no_fdc_msg: db 'NO FDC HARDWARE', 0
+
 str_msr:    db 'MSR:', 0
 str_st0:    db 'ST0:', 0
 str_track:  db 'TRK:', 0
