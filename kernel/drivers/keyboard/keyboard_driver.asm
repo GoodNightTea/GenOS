@@ -238,6 +238,8 @@ process_scancode:
 ; TETRIS INPUT HANDLING
 ; ============================================================================
 .tetris_input:
+    cmp al, SCANCODE_ESC
+    je .escape
     cmp al, SCANCODE_R
     je .triple_fault
     cmp al, SCANCODE_SPACE
@@ -304,7 +306,7 @@ process_scancode:
 .pong_input:
     cmp al, SCANCODE_R
     je .triple_fault
-    cmp al, SCANCODE_SPACE
+    cmp al, SCANCODE_ESC
     je .escape
 	mov ah, al
 	test ah, 0x80        ; ah = 0x80 if release, 0x00 if press
