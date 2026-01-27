@@ -74,7 +74,7 @@ show_disk_layout:
 .no_wrap1:
     dec edi
     jnz .loop1
-    mov eax, 200
+    mov eax, 20
     call wait_frames
     popad
     ret
