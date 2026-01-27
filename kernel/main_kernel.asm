@@ -2,7 +2,7 @@
 [ORG 0x100000]
 kernel_entry:
     mov esp, 0x7C00
-
+	; init of idt's, pics and fdc
     cli
     call setup_idt
     call setup_timer_idt
@@ -26,6 +26,8 @@ kernel_entry:
 	call init_fdc
 	call show_disk_stats
 	call show_disk_layout
+	call setup_gradient_palette
+	
 	mov eax, 1
 	call wait_frames
 .entry:
@@ -35,9 +37,16 @@ kernel_entry:
     mov byte [is_pong], 0  
     mov byte [is_debug], 0
     mov byte [is_cli], 0
-    mov al, 0
-    call mode13_clear_screen
-
+    
+	mov dword [grad_start_idx], 16
+	mov dword [grad_end_idx], 32
+	mov eax, 0
+	mov ebx, 0
+	mov ecx, 320
+	mov edx, 200
+	call draw_gradient_rect
+	
+	; choice menu
     mov esi, menu
     mov eax, 130
     mov ebx, 80
@@ -79,8 +88,21 @@ kernel_entry:
     mov dl, 6
     call mode13_print_string
     mov byte [menu_choice], -1
+    
+	; logo    
+    mov esi, welcome
+    mov eax, 20
+	mov ebx, 30
+    mov dl, 3
+    call mode13_print_string
+    sub ebx, 10
+    add eax, 85
+    mov esi, 15
+	call print_LOGO
+	
 
 .wait_for_choice:
+
 	sti
     hlt                              ; Wait for keyboard interrupt
     mov al, [menu_choice]            ; Check what user pressed
@@ -163,6 +185,7 @@ KERNEL_DATA_SIZE:   dd DATA_SECTORS
 
 %include "drivers/fonts/font1.asm"
 %include "drivers/fonts/font2.asm"
+%include "drivers/fonts/GenOS_logo.asm"
 %include "drivers/vga/13h_vga.asm"
 %include "drivers/keyboard/keyboard_driver.asm"
 %include "drivers/timer/timer_driver.asm"
@@ -178,6 +201,7 @@ sector1_label: db 'DOS:', 0
 sector2_label: db 'TRES:', 0
 read_fail:     db 'ERROR', 0
 
+welcome		      db 'WELCOME TO', 0
 menu		      db 'CHOOSE A GAME', 0
 SNAKE		      db '1 SNAKE', 0
 TETRIS		      db '2 TETRIS', 0
