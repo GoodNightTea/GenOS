@@ -10,6 +10,7 @@ A minimal x86 operating system with games, VGA graphics, and FAT12 filesystem su
 - Memory management via circular buffers
 - Pseudo random number generation
 - Integrated file system that persist data across reboot
+- Multiple fonts
 
 ## Features
 ### Low-Level Systems
@@ -28,6 +29,7 @@ A minimal x86 operating system with games, VGA graphics, and FAT12 filesystem su
 - IDT setup (kernel/games/global_functions.asm)
 - Game of Life (kernel/games/gameoflife.asm)
 - Build script (tools/builder.sh)
+- Majority of palette setups for gradients
 As well as general assistance with optimization of code and logic flow in the beginning due to lacking knowledge of x86_64 ASM
 
 #### Human-written:
@@ -113,7 +115,6 @@ this is really unecessary and needs a lot of adjusting, not recommended.
 | **D** | Move Right |
 | **S** | Soft Drop |             
 | **SPACE** | Rotate |  
-#### i need to fix the rotate keybind, rn gets fetched by return to menu
 
 ### Pong
 | Key | Action |
@@ -130,7 +131,7 @@ this is really unecessary and needs a lot of adjusting, not recommended.
 | **ENTER** | Shifts row and resets column |
 | **DELETE** | Player 2 left |
 
-### Test
+### Debug
 | Key | Action |
 |-----|--------|
 | **1** | Plays a low tone |
@@ -139,11 +140,11 @@ this is really unecessary and needs a lot of adjusting, not recommended.
 
 ## STARTUP
 ### displays the current occupied and free sectors injected by the build script
-<img width="639" height="394" alt="image" src="https://github.com/user-attachments/assets/6d021d6f-d804-487e-b0bd-16d978719cbd" />
+<img width="630" height="393" alt="image" src="https://github.com/user-attachments/assets/f4499800-119b-47bf-b6ce-193363d57ac6" />
 
 ## Main Menu
 ### displays the current available "games"
-<img width="632" height="391" alt="image" src="https://github.com/user-attachments/assets/68bd8707-235e-4602-afcd-844f97b240da" />
+<img width="637" height="394" alt="image" src="https://github.com/user-attachments/assets/3d9a2834-23fa-41fd-b5d3-1b8f644915ef" />
 
 ### Snake
 <img width="642" height="390" alt="image" src="https://github.com/user-attachments/assets/1cd8dff8-d5d8-4233-bdec-9e0fde70757d" />
@@ -159,6 +160,9 @@ this is really unecessary and needs a lot of adjusting, not recommended.
 
 ### Pong 
 <img width="640" height="403" alt="image" src="https://github.com/user-attachments/assets/ecdf5b91-db1f-4699-9506-5292f85f38fc" />
+
+### Font tester
+![Uploading image.png…]()
 
 ### Minimal Terminal
 <img width="1443" height="439" alt="image" src="https://github.com/user-attachments/assets/22b7256a-3450-4b0d-b4bb-31285961f31b" />
@@ -199,7 +203,8 @@ Memory Layout
 
 ## Project Structure
 ```
-.
+├── README.md
+├── Resources.md
 ├── boot
 │   ├── first
 │   │   └── boot.asm
@@ -214,16 +219,16 @@ Memory Layout
 │   ├── drivers
 │   │   ├── audio
 │   │   │   └── audio_driver.asm
-│   │   ├── fonts
-│   │   │   └── font1.asm
-│   │   ├── keyboard
-│   │   │   └── keyboard_driver.asm
-│   │   ├── fdc
-│   │   │   └── floppydisk_controller.asm
-│   │   ├── fs
-│   │   │   └── fat12.asm
 │   │   ├── dma
 │   │   │   └── direct_mem_access.asm
+│   │   ├── fdc
+│   │   │   └── floppydisk_controller.asm
+│   │   ├── fonts
+│   │   │   ├── GenOS_logo.asm
+│   │   │   ├── font1.asm
+│   │   │   └── font2.asm
+│   │   ├── fs
+│   │   │   └── fat12.asm
 │   │   ├── keyboard
 │   │   │   └── keyboard_driver.asm
 │   │   ├── timer
@@ -235,12 +240,15 @@ Memory Layout
 │   │   ├── global_functions.asm
 │   │   ├── pong.asm
 │   │   ├── snake.asm
+│   │   ├── terminal.asm
 │   │   ├── test.asm
 │   │   └── tetris.asm
-│   │   └── terminal.asm
-│   └── main_kernel.asm
+│   ├── main_kernel.asm
+│   └── misc
+│       └── font_tester.asm
 └── tools
     └── builder.sh
+
 
 ```
 ## Issues
