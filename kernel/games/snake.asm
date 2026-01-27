@@ -341,26 +341,26 @@ setup_snake_palette:
     mov bl, 0
     mov bh, 63
     mov cl, 0
-    call set_palette_color
+    call set_snakes_palette_color
     
     ; Apple: Bright red
     mov al, 12
     mov bl, 63
     mov bh, 0
     mov cl, 0
-    call set_palette_color
+    call set_snakes_palette_color
     
     ; White for text/UI
     mov al, 15
     mov bl, 63
     mov bh, 63
     mov cl, 63
-    call set_palette_color
+    call set_snakes_palette_color
     
     popad
     ret
 
-set_palette_color:
+set_snakes_palette_color:
     ; Input: AL = index, BL = red, BH = green, CL = blue (0-63)
     push ax
     push dx
