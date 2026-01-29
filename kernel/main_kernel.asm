@@ -26,7 +26,6 @@ kernel_entry:
 	call init_fdc
 	call show_disk_stats
 	call show_disk_layout
-	call setup_gradient_palette
 	
 	mov eax, 1
 	call wait_frames
@@ -37,9 +36,9 @@ kernel_entry:
     mov byte [is_pong], 0  
     mov byte [is_debug], 0
     mov byte [is_cli], 0
-    
-	mov dword [grad_start_idx], 16
-	mov dword [grad_end_idx], 32
+.render:
+	mov dword [grad_start_idx], 0xE0
+	mov dword [grad_end_idx], 0xEF	
 	mov eax, 0
 	mov ebx, 0
 	mov ecx, 320
@@ -104,7 +103,7 @@ kernel_entry:
 .wait_for_choice:
 
 	sti
-    hlt                              ; Wait for keyboard interrupt
+    hlt               ; Wait for keyboard interrupt
     mov al, [menu_choice]            ; Check what user pressed
     cmp al, 1
     je .snake
