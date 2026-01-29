@@ -523,72 +523,6 @@ mode13_pong:
     ret
    
 
-; ----------------------------------------------------------------------------
-; draw_gradient_rect: draws a gradient rectangle with with a ranging gradient scale
-; Input: EAX = x, EBX = y, ECX = width, EDX = height
-;   [grad_start_idx] = first palette index to use
-;   [grad_end_idx] = last palette index to use
-; ----------------------------------------------------------------------------
-
-
-draw_gradient_rect:
-    pushad
-    
-    mov [grad_x], eax
-    mov [grad_y], ebx
-    mov [grad_width], ecx
-    mov [grad_height], edx
-    
-    ; Calculate palette range
-    mov eax, [grad_end_idx]
-    sub eax, [grad_start_idx]
-    mov [grad_range], eax           ; Number of colors available
-    
-    xor ebp, ebp                    ; Row counter
-    
-.row_loop:
-    cmp ebp, [grad_height]
-    jge .done
-    
-    xor esi, esi                    ; Column counter
-    
-.col_loop:
-    cmp esi, [grad_width]
-    jge .next_row
-    
-
-    ; index = start + (column * range) / width
-    mov eax, esi
-    mul dword [grad_range]          ; EDX:EAX = column * range
-    div dword [grad_width]          ; EAX = (column * range) / width
-    add eax, [grad_start_idx]       ; Add start offset
-    
-    ; Clamp to end index (safety)
-    cmp eax, [grad_end_idx]
-    jle .in_range
-    mov eax, [grad_end_idx]
-.in_range:
-    
-    ; Draw pixel
-    push eax                        ; Save color
-    mov eax, [grad_x]
-    add eax, esi
-    mov ebx, [grad_y]
-    add ebx, ebp
-    pop ecx                         ; Color index
-    call mode13_set_pixel
-    
-    inc esi
-    jmp .col_loop
-    
-.next_row:
-    inc ebp
-    jmp .row_loop
-    
-.done:
-    popad
-    ret
-
 
 ; ----------------------------------------------------------------------------
 ; mode13_rgb_rect: Draw filled rectangle with changing color per pixel
@@ -674,141 +608,39 @@ draw_border:
     ret
 
 
-
 ; ============================================================================
 ; Gradient setups - created with the help of generative AI
+; gradients are suprisingly hard to manually implement, especially with dithering
 ; ============================================================================
 
-; Grayscale in 16-47
-setup_grayscale_palette:
+    	
+setup_smooth_gray:
     pushad
     xor edi, edi
+    
 .loop:
-    cmp edi, 32
+    cmp edi, 240			; stops at (index amount - 1),can create ob1 bugs if u dont pay attention 	
     jge .done
     
+    ; Calculate intensity: (counter * 63) / 240
     mov eax, edi
-    mov edx, 63
+    mov edx, 64
     mul edx
-    mov ebx, 31
+    mov ebx, 240				; 
     xor edx, edx
-    div ebx                         ; Intensity
+    div ebx                     ; eax = intensity (0-100)
     
-    mov ebx, eax                    ; R=G=B
-    mov ecx, eax
+    ; Use stack to preserve intensity
+    push eax                    ; Save intensity
+
     mov eax, edi
-    add eax, 16                     ; Index 16-47
-    mov bh, bl
-    call setup_grayscale_palette
+    add eax, 16                 ; AL = palette index (start + counter)
     
-    inc edi
-    jmp .loop
-.done:
-    popad
-    ret
-
-; Rainbow in 48-79
-setup_rainbow_palette:
-    pushad
-    xor edi, edi
-.loop:
-    cmp edi, 32
-    jge .done
-    
-
-    ; Hue varies from 0-360 degrees
-    mov eax, edi
-    mov edx, 360
-    mul edx
-    mov ebx, 32
-    div ebx                         ; EAX = hue (0-360)
-    
-
-    cmp eax, 120
-    jl .red_to_green
-    cmp eax, 240
-    jl .green_to_blue
-    ; blue_to_red
-    sub eax, 240
-    mov ebx, 63                     ; Red increases
-    mul ebx
-    mov ecx, 120
-    div ecx
-    mov ebx, eax
-    mov ecx, 63
-    sub ecx, eax                    ; Blue decreases
-    xor eax, eax                    ; Green = 0
-    jmp .set
-    
-.red_to_green:
-    mov ebx, 63                     ; Red = max
-    mov edx, eax
-    mov eax, 63
-    mul edx
-    mov ecx, 120
-    div ecx                         ; Green increases
-    mov [temp_g], al
-    mov ecx, 0                      ; Blue = 0
-    mov al, [temp_g]
-    mov bh, al
-    jmp .set
-    
-.green_to_blue:
-    sub eax, 120
-    xor ebx, ebx                    ; Red = 0
-    mov edx, 63
-    sub edx, eax
-    mov bh, dl                      ; Green decreases
-    mov ecx, eax                    ; Blue increases
-    
-.set:
-    push ebx
-    push ecx
-    mov eax, edi
-    add eax, 48                     ; Index 48-79
-    pop ecx
-    pop ebx
-    call set_palette_color
-    
-    inc edi
-    jmp .loop
-.done:
-    popad
-    ret
-
-
-setup_gradient_palette:
-    pushad
-    
-    xor edi, edi                    ; Counter: 0-31
-    
-.loop:
-    cmp edi, 32
-    jge .done
-    
-    ; Calculate intensity: (counter * 63) / 31
-    mov eax, edi
-    mov edx, 63
-    mul edx                         ; EDX:EAX = counter * 63
-    mov ebx, 31
-    div ebx                         ; EAX = intensity (0-63)
-    
-    ; Palette index = 16 + counter
-    mov ebx, edi
-    add ebx, 16
-    
-    ; Set palette entry
-    push eax                        ; Save intensity
-    push ebx                        ; Save index
-    
-    mov al, bl                      ; AL = palette index
-    pop ebx                         ; Get index back
-    pop ebx                         ; Get intensity
-    
-    ; Set R=G=B=intensity for grayscale
-    mov bl, bl                      ; Red = intensity (already in BL)
-    mov bh, bl                      ; Green = intensity
-    mov cl, bl                      ; Blue = intensity
+    ; Set RGB from saved intensity
+    pop edx                     ; Get intensity back
+    mov bl, dl                  ; Red = intensity
+    mov bh, dl                  ; Green = intensity
+    mov cl, dl                  ; Blue = intensity
     
     push edi
     call set_palette_color
@@ -820,7 +652,239 @@ setup_gradient_palette:
 .done:
     popad
     ret
- 
+	
+
+
+; ----------------------------------------------------------------------------
+; draw_gradient_rect: draws a gradient rectangle with with a ranging gradient scale
+; Input: EAX = x, EBX = y, ECX = width, EDX = height
+;   [grad_start_idx] = first palette index to use
+;   [grad_end_idx] = last palette index to use
+; got a basic 2x2 checkerboard dithering effect
+; 01
+; 32
+; ----------------------------------------------------------------------------
+draw_gradient_rect:
+    pushad
+    
+    mov [grad_x], eax
+    mov [grad_y], ebx
+    mov [grad_width], ecx
+    mov [grad_height], edx
+    
+    ; Calculate palette range
+    mov eax, [grad_end_idx]
+    sub eax, [grad_start_idx]
+    mov [grad_range], eax           ; Number of colors available
+    
+    xor ebp, ebp                    ; Row counter
+    
+.row_loop:	
+    cmp ebp, [grad_height]
+    jge .done
+    xor esi, esi                    ; Column counter
+    
+.col_loop:
+    cmp esi, [grad_width]
+    jge .next_row
+    
+
+    ; index = start + (column * range) / width
+    mov eax, esi
+    mul dword [grad_range]          ; EDX:EAX = column * range
+    div dword [grad_width]          ; EAX = (column * range) / width
+    add eax, [grad_start_idx]       ; Add start offset
+    
+    ; Clamp to end index (safety)
+    cmp eax, [grad_end_idx]
+    jle .in_range
+    mov eax, [grad_end_idx]
+    
+.in_range:
+    mov dword [current_c], eax
+    inc eax
+    cmp eax, [grad_end_idx]
+    jle .b_ok
+    mov dword [next_c], eax
+.b_ok:
+	mov [next_c], eax
+	
+	mov eax, esi
+	add eax, ebp
+	and eax, 1
+	jz .use_a
+	
+	mov eax, [next_c]
+	jmp .draw
+.use_a:
+	mov eax, [current_c]
+.draw:
+    ; Draw pixel
+    push eax                        ; Save color
+    mov eax, [grad_x]
+    add eax, esi
+    mov ebx, [grad_y]
+    add ebx, ebp
+    pop ecx                         ; Color index
+    call mode13_set_pixel
+    
+    inc esi
+    jmp .col_loop
+    
+.next_row:
+    inc ebp
+    jmp .row_loop
+    
+.done:
+    popad
+    ret
+    
+    
+setup_custom_gradient:
+    pushad
+    xor edi, edi                    ; Counter = 0
+    
+.loop:
+    cmp edi, [grad_num_colors]
+    jge .done
+    
+    ; Calculate divisor once (num_colors - 1)
+    mov ecx, [grad_num_colors]
+    dec ecx
+    jz .single_color                ; Avoid divide by zero
+    
+    ; --- RED component ---
+    movzx eax, byte [grad_end_r]
+    movzx ebx, byte [grad_start_r]
+    sub eax, ebx                    ; delta_R
+    imul eax, edi                   ; delta_R * step
+    cdq                             ; Sign extend for idiv
+    idiv ecx                        ; / (num_colors - 1)
+    add al, byte [grad_start_r]     ; + start_R
+    
+    ; Clamp 0-63
+    cmp al, 0
+    jge .r_ok1
+    xor al, al
+.r_ok1:
+    cmp al, 63
+    jle .r_ok2
+    mov al, 63
+.r_ok2:
+    mov [temp_r], al
+    
+    ; --- GREEN component ---
+    movzx eax, byte [grad_end_g]
+    movzx ebx, byte [grad_start_g]
+    sub eax, ebx
+    imul eax, edi
+    cdq
+    idiv ecx
+    add al, byte [grad_start_g]
+    
+    cmp al, 0
+    jge .g_ok1
+    xor al, al
+.g_ok1:
+    cmp al, 63
+    jle .g_ok2
+    mov al, 63
+.g_ok2:
+    mov [temp_g], al
+    
+    ; --- BLUE component ---
+    movzx eax, byte [grad_end_b]
+    movzx ebx, byte [grad_start_b]
+    sub eax, ebx
+    imul eax, edi
+    cdq
+    idiv ecx
+    add al, byte [grad_start_b]
+    
+    cmp al, 0
+    jge .b_ok1
+    xor al, al
+.b_ok1:
+    cmp al, 63
+    jle .b_ok2
+    mov al, 63
+.b_ok2:
+    mov [temp_b], al
+    
+    ; --- Set palette entry ---
+    mov eax, edi
+    add eax, [grad_palette_start]   ; Palette index
+    
+    mov bl, [temp_r]
+    mov bh, [temp_g]
+    mov cl, [temp_b]
+    
+    push edi
+    push ecx
+    call set_palette_color
+    pop ecx
+    pop edi
+    
+    inc edi
+    jmp .loop
+    
+.single_color:
+    ; If num_colors = 1, just use start color
+    mov al, byte [grad_start_r]
+    mov [temp_r], al
+    mov al, byte [grad_start_g]
+    mov [temp_g], al
+    mov al, byte [grad_start_b]
+    mov [temp_b], al
+    
+    mov eax, [grad_palette_start]
+    mov bl, [temp_r]
+    mov bh, [temp_g]
+    mov cl, [temp_b]
+    call set_palette_color
+    
+.done:
+    popad
+    ret
+
+; Helper: interpolate one component
+; Input: AL = start value, BL = end value, EDI = current step
+; Output: AL = interpolated value
+calc_component:
+    push ebx
+    push ecx
+    push edx
+    
+    movzx eax, al                   ; start
+    movzx ebx, bl                   ; end
+    sub ebx, eax                    ; delta = end - start
+    imul ebx, edi                   ; delta * step
+    
+    mov ecx, [grad_num_colors]
+    dec ecx                         ; total_steps - 1
+    mov eax, ebx
+    cdq                             ; Sign-extend for signed division
+    idiv ecx                        ; (delta * step) / total_steps
+    
+    movzx ebx, byte [esp + 12]      ; Get original start value
+    add eax, ebx                    ; start + interpolated_delta
+    
+    ; Clamp to 0-63
+    cmp eax, 0
+    jge .not_negative
+    xor eax, eax
+.not_negative:
+    cmp eax, 63
+    jle .not_over
+    mov eax, 63
+.not_over:
+    
+    pop edx
+    pop ecx
+    pop ebx
+    ret
+    
+    
 set_palette_color:
     ; Input: AL = index, BL = red (0-63), BH = green (0-63), CL = blue (0-63)
     push eax
@@ -849,6 +913,19 @@ set_palette_color:
 ; ============================================================================
 ; DATA SECTION FOR 13h VGA DRIVER
 ; ============================================================================
+current_c:		dd 0
+next_c:			dd 0 
+grad_start_r: db 0
+grad_start_g: db 0
+grad_start_b: db 0
+grad_end_r: db 0
+grad_end_g: db 0
+grad_end_b: db 0
+grad_palette_start: dd 16
+grad_num_colors: dd 32
+temp_r: db 0
+temp_b: db 0
+
 temp_g: db 0
 grad_x:         dd 0
 grad_y:         dd 0
