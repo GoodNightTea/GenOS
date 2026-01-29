@@ -25,7 +25,6 @@ tetris_setup:
     
     call draw_tetris_hud
     call spawn_piece
-    
     ; Main game loop
     jmp tetris_loop
 
@@ -996,7 +995,7 @@ tet_drop_speed:     dd 6            ; Frames between drops
 
 tet_test_x:         dd 0            ; Temp for collision testing
 tet_test_y:         dd 0
-
+CELL_SIZE			dd 0
 ; Strings
 score_label:        db 'SCORE', 0
 next_label:         db 'NEXT', 0
