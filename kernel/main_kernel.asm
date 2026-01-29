@@ -194,10 +194,9 @@ welcome		      db 'WELCOME TO', 0
 menu		      db 'CHOOSE A GAME', 0
 SNAKE		      db '1 SNAKE', 0
 TETRIS		      db '2 TETRIS', 0
-GOF       	      db '3 GAMEOFLIFE', 0
-PONG		      db '4 PONG', 0
-TERMINAL		  db '5 TERMINAL', 0
-FONT		      db '6 FONT TESTER', 0
+PONG		      db '3 PONG', 0
+TERMINAL		  db '4 TERMINAL', 0
+FONT		      db '5 FONT TESTER', 0
 DEBUG		      db '0 DEBUG', 0
 
 
