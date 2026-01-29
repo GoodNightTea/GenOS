@@ -6,10 +6,10 @@
 SCANCODE_0          equ 0x0B ; DEBUG
 SCANCODE_1          equ 0x02 ; SNAKE
 SCANCODE_2          equ 0x03 ; TETRIS
-SCANCODE_3          equ 0x04 ; GOF
-SCANCODE_4          equ 0x05 ; PONG
-SCANCODE_5          equ 0x06 ; CLI
-SCANCODE_6          equ 0x07 ; FONT TESTER
+SCANCODE_3          equ 0x04 ; PONG
+SCANCODE_4          equ 0x05 ; CLI
+SCANCODE_5          equ 0x06 ; FONT TESTER
+SCANCODE_6          equ 0x07 
 SCANCODE_7          equ 0x08
 SCANCODE_8          equ 0x09
 SCANCODE_9          equ 0x0A
@@ -157,11 +157,11 @@ process_scancode:
     mov byte [menu_choice], 3
     jmp .done
 .menu_choice_4:
-    mov byte [is_pong], 1 	
+    mov byte [is_cli], 1 	
     mov byte [menu_choice], 4
     jmp .done
 .menu_choice_5: 	
-	mov byte [is_cli], 1
+	
     mov byte [menu_choice], 5
 	jmp .done
 	
