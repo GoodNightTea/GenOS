@@ -62,20 +62,16 @@ kernel_entry:
     add ebx, 10
     mov dl, 2
     call mode13_print_string
-    
-    mov esi, GOF
-    add ebx, 10
-    mov dl, 3
-    call mode13_print_string
+
     
     mov esi, PONG
     add ebx, 10
-    mov dl, 4
+    mov dl, 3
     call mode13_print_string
     ; removed pacman due to it being oos of this project
     mov esi, TERMINAL
 	add ebx, 10
-    mov dl, 5
+    mov dl, 4
     call mode13_print_string
     mov esi, FONT
 	add ebx, 10
@@ -110,12 +106,10 @@ kernel_entry:
     cmp al, 2
     je .tetris
     cmp al, 3
-    je .gof
-    cmp al, 4
     je .pong
-    cmp al, 5
+    cmp al, 4
     je .cli
-    cmp al, 6
+    cmp al, 5
     je .font_tester
     cmp al, 0
     je .test
@@ -123,9 +117,6 @@ kernel_entry:
 .pong:
 	call pong
 	jmp .pong
-.gof:
-	call gameoflife
-	jmp .gof
 .cli:
 	call terminal
 	jmp .cli
@@ -171,7 +162,6 @@ KERNEL_DATA_SIZE:   dd DATA_SECTORS
 
 %include "games/tetris.asm"
 %include "games/test.asm"
-%include "games/gameoflife.asm"
 %include "games/pong.asm"
 %include "games/global_functions.asm"
 %include "games/snake.asm"
