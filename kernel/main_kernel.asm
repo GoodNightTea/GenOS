@@ -26,11 +26,20 @@ kernel_entry:
 	call init_fdc
 	call show_disk_stats
 	call show_disk_layout
-	cli
-	hlt
-	hlt
-	mov eax, 1
-	call wait_frames
+
+	mov eax, 80
+	mov ebx, 2
+    mov esi, press_enter
+    mov dl, 1
+    call mode13_print_string
+
+.waiting:
+	sti
+    hlt               ; Wait for keyboard interrupt	
+	mov al, [will_continue]
+	cmp al, 0
+	je .waiting
+
 .entry:
 	cli
     ; god thats a sloppy fix, can just add an in_game variable but idk im lazy
@@ -192,7 +201,10 @@ sector1_label: db 'DOS:', 0
 sector2_label: db 'TRES:', 0
 read_fail:     db 'ERROR', 0
 
+press_enter		  db 'PRESS ENTER TO CONTINUE', 0
+will_continue	  dd 0
 welcome		      db 'WELCOME TO', 0
+
 menu		      db 'CHOOSE A GAME', 0
 SNAKE		      db '1 SNAKE', 0
 TETRIS		      db '2 TETRIS', 0
