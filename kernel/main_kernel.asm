@@ -26,7 +26,9 @@ kernel_entry:
 	call init_fdc
 	call show_disk_stats
 	call show_disk_layout
-	
+	cli
+	hlt
+	hlt
 	mov eax, 1
 	call wait_frames
 .entry:
@@ -37,8 +39,8 @@ kernel_entry:
     mov byte [is_debug], 0
     mov byte [is_cli], 0
 .render:
-	mov dword [grad_start_idx], 0xE0
-	mov dword [grad_end_idx], 0xEF	
+	mov dword [grad_start_idx], 0x50
+	mov dword [grad_end_idx], 0x5F	
 	mov eax, 0
 	mov ebx, 0
 	mov ecx, 320
