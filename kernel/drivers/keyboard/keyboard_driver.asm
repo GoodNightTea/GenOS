@@ -102,6 +102,8 @@ process_scancode:
     jnz .done
     cmp al, SCANCODE_SPACE
     je .escape
+    cmp al, SCANCODE_ENTER
+    je .continuing
     cmp al, SCANCODE_R
     je .triple_fault
     cmp al, SCANCODE_0
@@ -141,6 +143,9 @@ process_scancode:
 ; ============================================================================
 ; MENU CHOICES
 ; ============================================================================
+.continuing:
+	mov dword [will_continue], 1
+	jmp .done
 .menu_choice_0: 	
     mov byte [menu_choice], 0
     mov byte [is_debug], 1
